@@ -98,6 +98,7 @@ function genVendorId() {
 
 // === Middleware ===
 app.use(express.json());
+app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'public', 'chat.html')));
 app.get('/qr', (req, res) => res.sendFile(path.join(__dirname, 'qr-public', 'index.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -221,14 +222,15 @@ app.post('/api/register', async (req, res) => {
 
   // Send code via WhatsApp using Evolution API
   try {
-    const instances = await (await fetch(`${EVO_URL}/instance/fetchInstances`, { headers: evoHeaders })).json();
-    const openInst = Array.isArray(instances) ? instances.find(i => i.instance?.status === 'open') : null;
+    const data = await (await fetch(`${EVO_URL}/instance/fetchInstances`, { headers: evoHeaders })).json();
+    const list = Array.isArray(data) ? data : (data.value || []);
+    const openInst = list.find(i => i.instance?.status === 'open');
     if (openInst) {
       const instName = openInst.instance.instanceName;
       const recipient = phone.startsWith('0') ? '213' + phone.slice(1) : phone;
       await fetch(`${EVO_URL}/message/sendText/${instName}`, {
         method: 'POST', headers: evoHeaders,
-        body: JSON.stringify({ number: recipient, textMessage: `🔐 رمز التوثيق الخاص بك:\n\n${code}\n\nأدخل هذا الرمز في التطبيق لإكمال التسجيل.` })
+        body: JSON.stringify({ number: recipient, textMessage: { text: `🔐 رمز التوثيق الخاص بك:\n\n${code}\n\nأدخل هذا الرمز في التطبيق لإكمال التسجيل.` } })
       });
     }
   } catch (e) { console.error('[REGISTER] WhatsApp error:', e.message); }
