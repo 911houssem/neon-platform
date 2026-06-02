@@ -262,37 +262,62 @@ app.post('/api/register/complete', (req, res) => {
 
 // ===================== CHATBOT API =====================
 
-app.post('/api/chat/message', (req, res) => {
-  const { message, phone, name, context } = req.body;
-  if (!message) return res.status(400).json({ error: 'الرسالة مطلوبة' });
-
-  const msg = message.trim();
-  let reply = '';
-
-  // Search products
+function getBotReply(msg, name) {
   const products = db.prepare(`SELECT p.name, p.price, p.description, v.store_name FROM products p JOIN vendors v ON p.vendor_id = v.vendor_id WHERE p.quantity > 0 AND (p.name LIKE ? OR p.description LIKE ?) LIMIT 5`).all(`%${msg}%`, `%${msg}%`);
-
-  if (products.length > 0) {
-    reply = '🛍️ وجدت هذه المنتجات:\n' + products.map((p, i) => `${i+1}. ${p.name} (${p.store_name}) - ${p.price} د.ج`).join('\n');
-  } else if (/^(السلام|مرحبا|hi|hello|مرحباً)/i.test(msg)) {
-    reply = `وعليكم السلام ${name}! 👋\nأنا المساعد الذكي. أستطيع:\n🔍 البحث عن منتجات\n🛒 تقديم طلبات\n📞 مساعدتك في أي استفسار`;
-  } else if (/^(شكراً|شكرا|thanks|ok|تمام)/i.test(msg)) {
-    reply = 'العفو! 😊 في خدمتك دائماً. هل تريد شيئاً آخر؟';
-  } else if (/^(منتجات|عروض|what do you have)/i.test(msg)) {
+  if (products.length > 0) return '🛍️ وجدت هذه المنتجات:\n' + products.map((p, i) => `${i+1}. ${p.name} (${p.store_name}) - ${p.price} د.ج`).join('\n');
+  if (/^(السلام|مرحبا|hi|hello|مرحباً)/i.test(msg)) return `وعليكم السلام ${name || 'صديقي'}! 👋\nأنا المساعد الذكي. أستطيع:\n🔍 البحث عن منتجات\n🛒 تقديم طلبات\n📞 مساعدتك في أي استفسار`;
+  if (/^(شكراً|شكرا|thanks|ok|تمام)/i.test(msg)) return 'العفو! 😊 في خدمتك دائماً. هل تريد شيئاً آخر؟';
+  if (/^(منتجات|عروض|what do you have)/i.test(msg)) {
     const all = db.prepare(`SELECT p.name, p.price, v.store_name FROM products p JOIN vendors v ON p.vendor_id = v.vendor_id WHERE p.quantity > 0 LIMIT 10`).all();
-    if (all.length > 0) reply = '📋 قائمة المنتجات المتوفرة:\n' + all.map((p, i) => `${i+1}. ${p.name} (${p.store_name}) - ${p.price} د.ج`).join('\n');
-    else reply = '🚫 لا توجد منتجات متوفرة حالياً.';
-  } else if (/سعر|كم\s?ثمن|price/i.test(msg)) {
-    const prod = db.prepare(`SELECT p.name, p.price, p.description, v.store_name FROM products p JOIN vendors v ON p.vendor_id = v.vendor_id WHERE p.quantity > 0 AND p.name LIKE ? LIMIT 1`).all(`%${msg.replace(/سعر|كم\s?ثمن/g,'').trim()}%`);
-    if (prod.length > 0) reply = `💰 ${prod[0].name}\nالسعر: ${prod[0].price} د.ج\nالمتجر: ${prod[0].store_name}`;
-    else reply = 'لم أجد المنتج. جرب اسم آخر 🔍';
-  } else if (/طلب|أطلب|شراء/i.test(msg)) {
-    reply = '✅ لطلب منتج، أرسل اسم المنتج وكميته وسيتم تأكيد الطلب.';
-  } else {
-    reply = '🤖 شكراً لرسالتك! سأحاول مساعدتك.\nيمكنك البحث عن منتجات أو طلب المساعدة.';
+    if (all.length > 0) return '📋 قائمة المنتجات المتوفرة:\n' + all.map((p, i) => `${i+1}. ${p.name} (${p.store_name}) - ${p.price} د.ج`).join('\n');
+    return '🚫 لا توجد منتجات متوفرة حالياً.';
   }
+  if (/سعر|كم\s?ثمن|price/i.test(msg)) {
+    const prod = db.prepare(`SELECT p.name, p.price, p.description, v.store_name FROM products p JOIN vendors v ON p.vendor_id = v.vendor_id WHERE p.quantity > 0 AND p.name LIKE ? LIMIT 1`).all(`%${msg.replace(/سعر|كم\s?ثمن/g,'').trim()}%`);
+    if (prod.length > 0) return `💰 ${prod[0].name}\nالسعر: ${prod[0].price} د.ج\nالمتجر: ${prod[0].store_name}`;
+    return 'لم أجد المنتج. جرب اسم آخر 🔍';
+  }
+  if (/طلب|أطلب|شراء/i.test(msg)) return '✅ لطلب منتج، أرسل اسم المنتج وكميته وسيتم تأكيد الطلب.';
+  return '🤖 شكراً لرسالتك! سأحاول مساعدتك.\nيمكنك البحث عن منتجات أو طلب المساعدة.';
+}
 
-  res.json({ reply });
+app.post('/api/chat/message', (req, res) => {
+  const { message, name } = req.body;
+  if (!message) return res.status(400).json({ error: 'الرسالة مطلوبة' });
+  res.json({ reply: getBotReply(message.trim(), name) });
+});
+
+// WhatsApp webhook - receives incoming messages from Evolution API
+app.post('/api/webhook/whatsapp', async (req, res) => {
+  try {
+    const body = req.body;
+    const msgData = body.data || {};
+    const key = msgData.key || {};
+    const msgText = msgData.message?.conversation || msgData.message?.extendedTextMessage?.text || '';
+    const sender = key.remoteJid?.replace(/@s\.whatsapp\.net$/, '') || '';
+    if (!msgText || !sender) return res.json({ ok: true });
+
+    console.log(`[WHATSAPP] From ${sender}: ${msgText}`);
+
+    // Get bot reply
+    const reply = getBotReply(msgText.trim());
+
+    // Send reply via Evolution API
+    const instances = await (await fetch(`${EVO_URL}/instance/fetchInstances`, { headers: evoHeaders })).json();
+    const list = Array.isArray(instances) ? instances : (instances.value || []);
+    const openInst = list.find(i => i.instance?.status === 'open');
+    if (openInst) {
+      await fetch(`${EVO_URL}/message/sendText/${openInst.instance.instanceName}`, {
+        method: 'POST', headers: evoHeaders,
+        body: JSON.stringify({ number: sender, textMessage: { text: reply } })
+      });
+      console.log(`[WHATSAPP] Replied to ${sender}`);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[WHATSAPP] Webhook error:', e.message);
+    res.json({ ok: true });
+  }
 });
 
 app.get('/api/chat/products', (req, res) => {
