@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Tool · Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --sh: rgba(18,18,40,0.8);
+  --sg: rgba(18,18,40,0.3); --b: rgba(255,255,255,0.03); --bh: rgba(255,255,255,0.06);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff; --cg: rgba(0,229,255,0.08);
+  --em: #10b981; --tx: #f0f0ff; --t2: #8888aa; --t3: #444466; --da: #ff4466;
+  --r: 10px; --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+::selection { background:var(--pg); }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--pink); border-radius:2px; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); overflow-x:hidden; direction:rtl; padding:20px; }
+#bgC { position:fixed; inset:0; z-index:-2; }
+.g-noise { position:fixed; inset:0; z-index:-1; opacity:.008; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; }
+@keyframes fIn { from{opacity:0;transform:translateY(30px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes sp { to{transform:rotate(360deg)} }
+@keyframes pl { 0%,100%{opacity:1} 50%{opacity:.3} }
+.box { background:var(--s); backdrop-filter:blur(30px) saturate(1.3); border-radius:14px; border:1px solid var(--b); padding:40px 36px; width:600px; max-width:100%; animation:fIn .5s ease; margin:0 auto 20px; }
+.box-wide { width:900px; max-width:100%; }
+.lo { text-align:center; margin-bottom:22px; }
+.lo .ic { width:54px; height:54px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:16px; display:flex; align-items:center; justify-content:center; position:relative; }
+.lo .ic::after { content:''; position:absolute; inset:-2px; border-radius:18px; background:linear-gradient(135deg,var(--pink),var(--cyan)); opacity:.15; }
+.lo h1 { font-size:19px; font-weight:800; background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.lo p { color:var(--t2); font-size:12px; margin-top:2px; }
+nav { display:flex; gap:8px; justify-content:center; margin-bottom:18px; flex-wrap:wrap; }
+nav a { color:var(--t2); text-decoration:none; font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid var(--b); transition:all .2s; }
+nav a:hover, nav a.on { color:var(--tx); background:var(--sg); border-color:var(--pink); }
+.msg { padding:8px 12px; border-radius:6px; font-size:12px; text-align:center; display:none; margin-bottom:12px; }
+.msg.b { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.msg.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+.g { margin-bottom:13px; }
+.g label { display:block; color:var(--t2); font-size:11px; margin-bottom:3px; font-weight:600; }
+.inp { position:relative; }
+.inp input, .inp textarea { width:100%; padding:9px 12px; background:rgba(0,0,0,.25); border:1px solid var(--b); border-radius:6px; color:var(--tx); font-size:13px; transition:all .2s; font-family:var(--fn); }
+.inp input:focus, .inp textarea:focus { outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pg); }
+.inp input::placeholder, .inp textarea::placeholder { color:var(--t3); }
+.inp textarea { resize:vertical; min-height:50px; }
+.btn { padding:7px 16px; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; font-family:var(--fn); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-p { background:linear-gradient(135deg,var(--pink),#cc2060); color:white; }
+.btn-p:hover { transform:translateY(-1px); box-shadow:0 4px 18px var(--pg); }
+.btn-p:disabled { opacity:.4; cursor:not-allowed; transform:none!important; }
+.btn-g { background:var(--sg); border:1px solid var(--b); color:var(--t2); }
+.btn-g:hover { background:var(--sh); color:var(--tx); }
+.btn-d { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.btn-d:hover { background:rgba(255,68,102,.08); }
+.btn-w { width:100%; padding:10px; font-size:13px; justify-content:center; }
+.btn-group { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.btn-group .btn { flex:1; min-width:80px; }
+.hint { color:var(--t3); font-size:10px; margin-top:2px; }
+.stp { display:none; }
+.stp.on { display:block; animation:fIn .35s ease; }
+
+/* QR Display */
+.qr-show { background:rgba(0,0,0,.25); border-radius:10px; padding:24px; text-align:center; margin:12px 0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--b); }
+.qr-show img { max-width:180px; border-radius:4px; }
+.qr-show .url { color:var(--t2); font-size:10px; margin-top:8px; word-break:break-all; max-width:100%; }
+.qr-show .url span { color:var(--cyan); }
+
+/* Table */
+.tbl-w { overflow-x:auto; margin-top:12px; }
+table { width:100%; border-collapse:collapse; font-size:11px; }
+th { color:var(--t2); font-weight:600; text-align:right; padding:8px 10px; border-bottom:1px solid var(--b); }
+td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.02); color:var(--tx); }
+tr:hover td { background:var(--sg); }
+td .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:9px; font-weight:600; }
+.badge.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+.badge.y { background:rgba(255,192,0,.04); color:#ffc000; border:1px solid rgba(255,192,0,.06); }
+.badge.r { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.badge.p { background:var(--pg); color:var(--pink); border:1px solid rgba(255,45,123,.15); }
+td .sm { color:var(--t3); font-size:9px; }
+td .det-btn { color:var(--cyan); cursor:pointer; font-size:10px; }
+td .det-btn:hover { text-decoration:underline; }
+
+/* Modal */
+.modal { display:none; position:fixed; inset:0; background:rgba(6,6,14,.8); backdrop-filter:blur(10px); z-index:100; align-items:center; justify-content:center; padding:20px; }
+.modal.on { display:flex; }
+.modal .box { width:500px; max-height:80vh; overflow-y:auto; }
+.modal .close { position:absolute; top:12px; left:12px; background:none; border:none; color:var(--t2); font-size:18px; cursor:pointer; }
+.modal pre { background:rgba(0,0,0,.3); padding:12px; border-radius:6px; font-size:10px; color:var(--t2); overflow-x:auto; white-space:pre-wrap; direction:ltr; text-align:left; max-height:300px; overflow-y:auto; }
+
+/* Stat cards */
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:8px; margin:12px 0; }
+.stat { background:rgba(0,0,0,.15); border:1px solid var(--b); border-radius:8px; padding:12px; text-align:center; }
+.stat .n { font-size:22px; font-weight:800; background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.stat .l { color:var(--t3); font-size:9px; margin-top:2px; }
+
+footer { text-align:center; margin-top:18px; color:var(--t3); font-size:10px; }
+footer a { color:var(--cyan); text-decoration:none; }
+@media(max-width:480px){ .box { padding:28px 20px; } }
+</style>
+</head>
+<body>
+<canvas id="bgC"></canvas>
+<div class="g-noise"></div>
+
+<div class="box box-wide">
+  <div class="lo">
+    <div class="ic">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    </div>
+    <h1>أداة QR</h1>
+    <p>أنشئ QR لالتقاط معلومات الزوار وإرسالها إلى n8n</p>
+  </div>
+
+  <div id="er" class="msg b"></div>
+  <div id="ok" class="msg g"></div>
+
+  <nav>
+    <a href="#" class="on" data-tab="create">➕ إنشاء QR</a>
+    <a href="#" data-tab="campaigns">📋 الحملات</a>
+    <a href="#" data-tab="scans">📊 المسوحات</a>
+  </nav>
+
+  <!-- Tab: Create -->
+  <div id="tab-create" class="stp on">
+    <div class="g">
+      <label>🏷️ اسم الحملة</label>
+      <div class="inp"><input type="text" id="campName" placeholder="مثلاً: إعلان المنتج الجديد"></div>
+    </div>
+    <div class="g">
+      <label>🔗 رابط التوجيه (اختياري)</label>
+      <div class="inp"><input type="text" id="redirectUrl" placeholder="https://..." dir="ltr"></div>
+      <p class="hint">بعد التقاط المعلومات، يُوجه الزائر إلى هذا الرابط (اختياري)</p>
+    </div>
+    <div class="g">
+      <label>📝 ملاحظات داخلية</label>
+      <div class="inp"><textarea id="notes" placeholder="ملاحظات للحملة..."></textarea></div>
+    </div>
+    <button class="btn btn-p btn-w" id="createBtn" onclick="createCampaign()">🎯 إنشاء QR</button>
+
+    <div id="qrResult" style="display:none;">
+      <div class="qr-show" id="qrDisplay">
+        <img id="qrImg" src="" alt="QR Code">
+        <div class="url" id="qrUrl">الرابط: <span id="scanUrl"></span></div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-p" onclick="downloadQR()">⬇️ تحميل QR</button>
+        <button class="btn btn-g" onclick="copyScanUrl()">📋 نسخ الرابط</button>
+        <button class="btn btn-d" onclick="resetForm()">إعادة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Campaigns -->
+  <div id="tab-campaigns" class="stp">
+    <div class="tbl-w">
+      <table>
+        <thead><tr><th>الحملة</th><th>رمز</th><th>مسوحات</th><th>آخر مسح</th><th>الحالة</th><th></th></tr></thead>
+        <tbody id="campBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: Scans -->
+  <div id="tab-scans" class="stp">
+    <div class="stats" id="scanStats"></div>
+    <div class="tbl-w">
+      <table>
+        <thead><tr><th>الوقت</th><th>الحملة</th><th>IP</th><th>الجهاز</th><th>المتصفح</th><th>الدولة</th><th></th></tr></thead>
+        <tbody id="scanBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Neon QR Tool · <a href="http://localhost:5678">n8n</a></footer>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal" id="detailModal">
+  <div class="box" style="position:relative;">
+    <button class="close" onclick="closeDetail()">✕</button>
+    <div class="lo"><h1 id="detTitle">تفاصيل المسح</h1></div>
+    <pre id="detContent">{}</pre>
+    <div class="btn-group"><button class="btn btn-g btn-w" onclick="closeDetail()">إغلاق</button></div>
+  </div>
+</div>
+
+<script>
+// === Canvas ===
+const bc=document.getElementById('bgC'),bx=bc.getContext('2d');
+let bw,bh;
+const orbs=[];
+for(let i=0;i<4;i++){orbs.push({x:Math.random(),y:Math.random(),r:0.08+Math.random()*0.12,sx:(Math.random()-.5)*.002,sy:(Math.random()-.5)*.002,c:['#ff2d7b','#00e5ff','#7c3aed','#10b981'][i],a:0.03+Math.random()*0.04})}
+function rs(){bw=bc.width=innerWidth;bh=bc.height=innerHeight}
+rs();addEventListener('resize',rs);
+function dr(){bx.clearRect(0,0,bw,bh);orbs.forEach(o=>{o.x+=o.sx;o.y+=o.sy;if(o.x<-.1||o.x>1.1)o.sx*=-1;if(o.y<-.1||o.y>1.1)o.sy*=-1;const g=bx.createRadialGradient(o.x*bw,o.y*bh,0,o.x*bw,o.y*bh,o.r*bw);g.addColorStop(0,o.c+String(Math.round(o.a*255)).padStart(2,'0'));g.addColorStop(1,'transparent');bx.fillStyle=g;bx.fillRect(0,0,bw,bh)});requestAnimationFrame(dr)}
+dr();
+
+let currentCampId = null;
+
+function err(m){const e=document.getElementById('er');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',5000)}
+function ok(m){const s=document.getElementById('ok');s.textContent=m;s.style.display='block';setTimeout(()=>s.style.display='none',4000)}
+function showTab(t){document.querySelectorAll('[data-tab]').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.stp[id^="tab-"]').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));if(t==='campaigns')loadCampaigns();if(t==='scans')loadScans()}
+document.querySelectorAll('[data-tab]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();showTab(a.dataset.tab)}));
+
+async function createCampaign(){
+  const name=document.getElementById('campName').value.trim(),redirect=document.getElementById('redirectUrl').value.trim(),notes=document.getElementById('notes').value.trim(),btn=document.getElementById('createBtn');
+  if(!name)return err('الرجاء إدخال اسم الحملة');
+  btn.disabled=true;btn.textContent='⏳ جاري الإنشاء...';
+  try{
+    const r=await(await fetch('/api/qr-tool/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,redirect,notes})})).json();
+    if(r.error)return err(r.error);
+    currentCampId=r.id;
+    document.getElementById('qrImg').src=r.qr_base64;
+    document.getElementById('scanUrl').textContent=r.scan_url;
+    document.getElementById('qrResult').style.display='block';
+    ok('✅ تم إنشاء QR بنجاح');
+    showTab('campaigns');
+  }catch(e){err(e.message)}
+  finally{btn.disabled=false;btn.textContent='🎯 إنشاء QR'}
+}
+
+function downloadQR(){
+  const img=document.getElementById('qrImg');
+  if(!img.src)return;
+  const a=document.createElement('a');
+  a.href=img.src;
+  a.download='qr_'+(currentCampId||'campaign')+'.png';
+  a.click();
+}
+
+function copyScanUrl(){
+  const url=document.getElementById('scanUrl').textContent;
+  navigator.clipboard.writeText(url).then(()=>ok('✅ تم نسخ الرابط')).catch(()=>err('فشل النسخ'));
+}
+
+function resetForm(){
+  document.getElementById('campName').value='';
+  document.getElementById('redirectUrl').value='';
+  document.getElementById('notes').value='';
+  document.getElementById('qrResult').style.display='none';
+  currentCampId=null;
+}
+
+async function loadCampaigns(){
+  const b=document.getElementById('campBody');
+  try{
+    const r=await(await fetch('/api/qr-tool/campaigns')).json();
+    b.innerHTML=r.map(c=>{
+      const st=c.scans>0?'g':'y';
+      const stText=c.scans>0?'نشط':'بدون مسوحات';
+      const last=c.last_scan?new Date(c.last_scan).toLocaleString('ar-SA'):'-';
+      return `<tr><td><strong>${c.name}</strong><div class="sm">${c.notes||''}</div></td><td><span class="badge p">${c.code}</span></td><td>${c.scans}</td><td class="sm">${last}</td><td><span class="badge ${st}">${stText}</span></td><td><span class="det-btn" onclick="showCampDetail('${c.code}')">🔍</span></td></tr>`;
+    }).join('');
+  }catch(e){b.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--t3);">خطأ في التحميل</td></tr>'}
+}
+
+async function showCampDetail(code){
+  document.getElementById('detTitle').textContent='الحملة: '+code;
+  try{
+    const r=await(await fetch('/api/qr-tool/campaign/'+code)).json();
+    document.getElementById('detContent').textContent=JSON.stringify(r,null,2);
+    document.getElementById('detailModal').classList.add('on');
+  }catch(e){err(e.message)}
+}
+
+function closeDetail(){document.getElementById('detailModal').classList.remove('on')}
+
+async function loadScans(){
+  const b=document.getElementById('scanBody'),s=document.getElementById('scanStats');
+  try{
+    const r=await(await fetch('/api/qr-tool/scans')).json();
+    const total=r.length, today=r.filter(s=>new Date(s.scanned_at).toDateString()===new Date().toDateString()).length, uniq=new Set(r.map(s=>s.ip)).size;
+    s.innerHTML=`<div class="stat"><div class="n">${total}</div><div class="l">إجمالي المسوحات</div></div><div class="stat"><div class="n">${today}</div><div class="l">اليوم</div></div><div class="stat"><div class="n">${uniq}</div><div class="l">زوار فريدون</div></div>`;
+    b.innerHTML=r.map(sc=>{
+      const time=new Date(sc.scanned_at).toLocaleString('ar-SA');
+      const device=sc.device||(sc.user_agent?sc.user_agent.substring(0,40)+'...':'-');
+      const browser=sc.browser||'-';
+      return `<tr><td class="sm">${time}</td><td><span class="badge p">${sc.campaign_code||'-'}</span></td><td class="sm">${sc.ip||'-'}</td><td class="sm">${device}</td><td class="sm">${browser}</td><td class="sm">${sc.country||'-'}</td><td><span class="det-btn" onclick="showScanDetail(${sc.id})">🔍</span></td></tr>`;
+    }).join('');
+  }catch(e){b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--t3);">خطأ في التحميل</td></tr>'}
+}
+
+async function showScanDetail(id){
+  document.getElementById('detTitle').textContent='تفاصيل المسح #'+id;
+  try{
+    const r=await(await fetch('/api/qr-tool/scan/'+id)).json();
+    document.getElementById('detContent').textContent=JSON.stringify(r,null,2);
+    document.getElementById('detailModal').classList.add('on');
+  }catch(e){err(e.message)}
+}
+
+// Load campaigns on start
+loadCampaigns();
+</script>
+</body>
+</html>

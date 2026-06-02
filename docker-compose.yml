@@ -55,7 +55,7 @@ services:
       - customer-service-net
 
   admin-vendor-app:
-    image: node:20-alpine
+    image: node:20
     container_name: admin-vendor-app
     restart: unless-stopped
     ports:

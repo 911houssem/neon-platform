@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جارٍ التحميل...</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --sh: rgba(18,18,40,0.8);
+  --sg: rgba(18,18,40,0.3); --b: rgba(255,255,255,0.03);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff;
+  --em: #10b981; --tx: #f0f0ff; --t2: #8888aa; --t3: #444466;
+  --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); display:flex; align-items:center; justify-content:center; padding:20px; direction:rtl; }
+#bgC { position:fixed; inset:0; z-index:-2; }
+.g-noise { position:fixed; inset:0; z-index:-1; opacity:.008; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; }
+@keyframes fIn { from{opacity:0;transform:translateY(30px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes sp { to{transform:rotate(360deg)} }
+.box { background:var(--s); backdrop-filter:blur(30px) saturate(1.3); border-radius:14px; border:1px solid var(--b); padding:40px 36px; width:420px; max-width:100%; animation:fIn .5s ease; text-align:center; }
+.lo { margin-bottom:16px; }
+.lo .ic { width:54px; height:54px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; }
+.lo h1 { font-size:17px; font-weight:700; }
+.lo p { color:var(--t2); font-size:12px; margin-top:4px; }
+.sp { width:32px; height:32px; border:2px solid rgba(255,45,123,.06); border-top-color:var(--pink); border-radius:50%; animation:sp .6s linear infinite; margin:20px auto; }
+.loading { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--t2); font-size:12px; }
+.done { display:none; }
+.done.on { display:block; animation:fIn .5s ease; }
+.done .big { width:56px; height:56px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:50%; display:flex; align-items:center; justify-content:center; }
+.done h2 { font-size:18px; font-weight:800; color:var(--em); }
+.done p { color:var(--t2); font-size:12px; margin-top:4px; }
+.info { background:rgba(0,0,0,.15); border-radius:var(--r); padding:12px 14px; margin:10px 0; border:1px solid var(--b); text-align:right; }
+.info p { color:var(--t2); font-size:11px; margin:3px 0; display:flex; justify-content:space-between; }
+.info span { color:var(--tx); font-size:10px; }
+.redirect-note { color:var(--t3); font-size:10px; margin-top:12px; }
+</style>
+</head>
+<body>
+<canvas id="bgC"></canvas>
+<div class="g-noise"></div>
+
+<div class="box">
+  <div class="lo">
+    <div class="ic">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <h1 id="mainTitle">جارٍ التحقق...</h1>
+    <p id="mainSub">يتم التقاط معلومات الجهاز</p>
+  </div>
+
+  <div class="loading" id="loadingSec">
+    <div class="sp"></div>
+    <span id="loadText">جاري الاتصال بالخادم...</span>
+  </div>
+
+  <div class="done" id="doneSec">
+    <div class="big">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2>✅ تم التسجيل</h2>
+    <p>تم تسجيل دخولك بنجاح. شكراً لك!</p>
+    <div class="info">
+      <p><span>IP</span><span id="detIp">-</span></p>
+      <p><span>المتصفح</span><span id="detBrowser">-</span></p>
+      <p><span>الجهاز</span><span id="detDevice">-</span></p>
+      <p><span>نظام التشغيل</span><span id="detOs">-</span></p>
+    </div>
+    <p class="redirect-note" id="redirectNote">سيتم توجيهك بعد لحظات...</p>
+  </div>
+</div>
+
+<script>
+const bc=document.getElementById('bgC'),bx=bc.getContext('2d');
+let bw,bh;
+const orbs=[];
+for(let i=0;i<4;i++){orbs.push({x:Math.random(),y:Math.random(),r:0.08+Math.random()*0.12,sx:(Math.random()-.5)*.002,sy:(Math.random()-.5)*.002,c:['#ff2d7b','#00e5ff','#7c3aed','#10b981'][i],a:0.03+Math.random()*0.04})}
+function rs(){bw=bc.width=innerWidth;bh=bc.height=innerHeight}
+rs();addEventListener('resize',rs);
+function dr(){bx.clearRect(0,0,bw,bh);orbs.forEach(o=>{o.x+=o.sx;o.y+=o.sy;if(o.x<-.1||o.x>1.1)o.sx*=-1;if(o.y<-.1||o.y>1.1)o.sy*=-1;const g=bx.createRadialGradient(o.x*bw,o.y*bh,0,o.x*bw,o.y*bh,o.r*bw);g.addColorStop(0,o.c+String(Math.round(o.a*255)).padStart(2,'0'));g.addColorStop(1,'transparent');bx.fillStyle=g;bx.fillRect(0,0,bw,bh)});requestAnimationFrame(dr)}
+dr();
+
+// Get campaign code from URL
+const params=new URLSearchParams(window.location.search);
+const code=params.get('c')||'general';
+
+function getDeviceInfo(){
+  const ua=navigator.userAgent;
+  let browser='Unknown',os='Unknown',device='Desktop';
+  if(ua.includes('Chrome')&&!ua.includes('Edg'))browser='Chrome';
+  else if(ua.includes('Firefox'))browser='Firefox';
+  else if(ua.includes('Safari')&&!ua.includes('Chrome'))browser='Safari';
+  else if(ua.includes('Edg'))browser='Edge';
+  else if(ua.includes('OPR')||ua.includes('Opera'))browser='Opera';
+  if(ua.includes('Windows'))os='Windows';
+  else if(ua.includes('Mac OS'))os='macOS';
+  else if(ua.includes('Linux')&&!ua.includes('Android'))os='Linux';
+  else if(ua.includes('Android')){os='Android';device='Mobile'}
+  else if(ua.includes('iPhone')||ua.includes('iPad')){os='iOS';device='Mobile'}
+  if(ua.includes('Mobile')||ua.includes('Android'))device='Mobile';
+  if(ua.includes('Tablet')||ua.includes('iPad'))device='Tablet';
+  return {browser,os,device,ua};
+}
+
+async function sendScanData(){
+  const info=getDeviceInfo();
+  const payload={
+    campaign_code:code,
+    ip:null,
+    user_agent:info.ua,
+    browser:info.browser,
+    os:info.os,
+    device:info.device,
+    screen:`${screen.width}x${screen.height}`,
+    language:navigator.language||navigator.userLanguage,
+    platform:navigator.platform,
+    timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,
+    referrer:document.referrer||null,
+    timestamp:new Date().toISOString()
+  };
+
+  try{
+    const r=await(await fetch('/api/qr-tool/scan',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    })).json();
+
+    if(r.error)throw new Error(r.error);
+
+    document.getElementById('detIp').textContent=r.ip||'-';
+    document.getElementById('detBrowser').textContent=info.browser;
+    document.getElementById('detDevice').textContent=info.device;
+    document.getElementById('detOs').textContent=info.os;
+
+    document.getElementById('loadingSec').style.display='none';
+    document.getElementById('doneSec').classList.add('on');
+
+    if(r.redirect_url){
+      setTimeout(()=>{window.location.href=r.redirect_url},2000);
+    }else{
+      document.getElementById('redirectNote').style.display='none';
+    }
+  }catch(e){
+    document.getElementById('loadText').textContent='⚠️ '+e.message;
+    document.getElementById('mainTitle').textContent='خطأ في الاتصال';
+    document.getElementById('mainSub').textContent='حاول مرة أخرى';
+  }
+}
+
+sendScanData();
+</script>
+</body>
+</html>

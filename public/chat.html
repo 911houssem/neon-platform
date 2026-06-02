@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>المحادثة · Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --b: rgba(255,255,255,0.03);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff;
+  --tx: #f0f0ff; --t2: #8888aa; --t3: #444466;
+  --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); overflow:hidden; direction:rtl; display:flex; flex-direction:column; }
+header { padding:14px 20px; background:var(--s); backdrop-filter:blur(20px); border-bottom:1px solid var(--b); display:flex; align-items:center; gap:10px; }
+header h1 { font-size:15px; font-weight:700; flex:1; }
+header h1 span { color:var(--t2); font-weight:400; font-size:11px; display:block; }
+.chat { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:8px; }
+.chat::-webkit-scrollbar { width:3px; }
+.chat::-webkit-scrollbar-track { background:transparent; }
+.chat::-webkit-scrollbar-thumb { background:var(--t3); border-radius:2px; }
+.msg { max-width:80%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.6; animation:fIn .3s ease; word-wrap:break-word; }
+.msg.bot { align-self:flex-start; background:rgba(255,255,255,.04); border-bottom-right-radius:4px; }
+.msg.user { align-self:flex-end; background:linear-gradient(135deg,var(--pg),var(--cg)); border-bottom-left-radius:4px; }
+@keyframes fIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.typing { align-self:flex-start; display:flex; gap:4px; padding:12px 16px; background:rgba(255,255,255,.04); border-radius:12px; border-bottom-right-radius:4px; }
+.typing span { width:6px; height:6px; background:var(--t3); border-radius:50%; animation:pl 1.2s infinite; }
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes pl { 0%,100%{opacity:.3}50%{opacity:1} }
+.bar { padding:10px 14px; background:var(--s); backdrop-filter:blur(20px); border-top:1px solid var(--b); display:flex; gap:8px; align-items:center; }
+.bar input { flex:1; padding:10px 14px; background:rgba(0,0,0,.25); border:1px solid var(--b); border-radius:24px; color:var(--tx); font-size:13px; font-family:var(--fn); }
+.bar input:focus { outline:none; border-color:var(--pink); }
+.bar button { width:40px; height:40px; border:none; border-radius:50%; background:linear-gradient(135deg,var(--pink),#cc2060); color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; flex-shrink:0; }
+.bar button:hover { transform:scale(1.05); box-shadow:0 0 20px var(--pg); }
+.bar button:disabled { opacity:.3; cursor:not-allowed; transform:none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>خدمة العملاء <span id="hdrInfo">Neon AI</span></h1>
+  </div>
+</header>
+
+<div class="chat" id="chat">
+  <div class="msg bot">👋 مرحباً! أنا المساعد الذكي. كيف أقدر أساعدك؟</div>
+</div>
+
+<div class="bar">
+  <input type="text" id="inp" placeholder="اكتب رسالتك..." onkeydown="if(event.key==='Enter')send()">
+  <button onclick="send()" id="sndBtn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+  </button>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const myPhone = params.get('phone') || '';
+const myName = params.get('name') || 'زبون';
+
+document.getElementById('hdrInfo').textContent = myName;
+
+const chat = document.getElementById('chat');
+const inp = document.getElementById('inp');
+const snd = document.getElementById('sndBtn');
+
+let ctx = [];
+
+function addMsg(text, role) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  ctx.push({ role, text });
+}
+
+function showTyping() {
+  const d = document.createElement('div');
+  d.className = 'typing';
+  d.id = 'typing';
+  d.innerHTML = '<span></span><span></span><span></span>';
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+async function send() {
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  addMsg(text, 'user');
+  showTyping();
+  snd.disabled = true;
+  try {
+    const r = await fetch('/api/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, phone: myPhone, name: myName, context: ctx })
+    });
+    const data = await r.json();
+    hideTyping();
+    if (data.reply) addMsg(data.reply, 'bot');
+    else addMsg('عذراً، حدث خطأ. حاول مرة أخرى.', 'bot');
+  } catch(e) {
+    hideTyping();
+    addMsg('عذراً، حدث خطأ في الاتصال.', 'bot');
+  }
+  snd.disabled = false;
+  inp.focus();
+}
+
+inp.focus();
+</script>
+</body>
+</html>

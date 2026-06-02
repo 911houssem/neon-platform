@@ -1,10 +1,12 @@
 const express = require('express');
 const path = require('path');
 const Database = require('better-sqlite3');
+const QRCode = require('qrcode');
 
 const app = express();
 const PORT = 4000;
 const ADMIN_PASSWORD = '10032008';
+const N8N_QR_WEBHOOK = process.env.N8N_QR_WEBHOOK_URL || 'http://n8n:5678/webhook/qr-scan';
 
 // ===== Database =====
 const db = new Database(path.join(__dirname, 'store.db'));
@@ -42,6 +44,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_vendor_id ON vendors(vendor_id);
   CREATE INDEX IF NOT EXISTS idx_products_vendor ON products(vendor_id);
   CREATE INDEX IF NOT EXISTS idx_orders_vendor ON orders(vendor_id);
+  CREATE TABLE IF NOT EXISTS qr_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    redirect_url TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS qr_scans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_code TEXT NOT NULL REFERENCES qr_campaigns(code),
+    ip TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    browser TEXT DEFAULT '',
+    os TEXT DEFAULT '',
+    device TEXT DEFAULT '',
+    screen TEXT DEFAULT '',
+    language TEXT DEFAULT '',
+    platform TEXT DEFAULT '',
+    timezone TEXT DEFAULT '',
+    referrer TEXT DEFAULT '',
+    country TEXT DEFAULT '',
+    city TEXT DEFAULT '',
+    raw_data TEXT DEFAULT '{}',
+    scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Generate unique vendor ID
@@ -241,6 +269,114 @@ app.get('/api/chat/vendor/:vid', (req, res) => {
     const vendor = db.prepare('SELECT vendor_id, store_name, info FROM vendors WHERE vendor_id = ?').get(req.params.vid);
     if (!vendor) return res.status(404).json({ error: 'البائع غير موجود' });
     res.json(vendor);
+});
+
+// ===================== QR TOOL ROUTES =====================
+
+app.get('/qr-tool', (req, res) => res.sendFile(path.join(__dirname, 'public', 'qr-tool.html')));
+app.get('/qr-tool/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'qr-tool.html')));
+
+app.get('/s', (req, res) => res.sendFile(path.join(__dirname, 'public', 'scan.html')));
+
+function genCampCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  while (true) {
+    let code = '';
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    if (!db.prepare('SELECT 1 FROM qr_campaigns WHERE code = ?').get(code)) return code;
+  }
+}
+
+function getClientIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.connection?.remoteAddress || '';
+}
+
+async function sendToN8n(data) {
+  try {
+    await fetch(N8N_QR_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'qr_scan', ...data, timestamp: new Date().toISOString() })
+    });
+  } catch (e) {
+    console.error('[QR-TOOL] n8n webhook error:', e.message);
+  }
+}
+
+app.post('/api/qr-tool/create', async (req, res) => {
+  try {
+    const { name, redirect, notes } = req.body;
+    if (!name) return res.status(400).json({ error: 'اسم الحملة مطلوب' });
+    const code = genCampCode();
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const scanUrl = `${baseUrl}/s?c=${code}`;
+    const qrBase64 = await QRCode.toDataURL(scanUrl, { width: 400, margin: 2, color: { dark: '#ff2d7b', light: '#06060e00' } });
+    db.prepare('INSERT INTO qr_campaigns (code, name, redirect_url, notes) VALUES (?, ?, ?, ?)').run(code, name, redirect || '', notes || '');
+    res.json({ success: true, id: code, code, scan_url: scanUrl, qr_base64: qrBase64 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/qr-tool/campaigns', (req, res) => {
+  try {
+    const camps = db.prepare(`
+      SELECT c.*, (SELECT COUNT(*) FROM qr_scans WHERE campaign_code = c.code) as scans,
+      (SELECT MAX(scanned_at) FROM qr_scans WHERE campaign_code = c.code) as last_scan
+      FROM qr_campaigns c ORDER BY c.created_at DESC
+    `).all();
+    res.json(camps);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/qr-tool/campaign/:code', (req, res) => {
+  try {
+    const camp = db.prepare('SELECT * FROM qr_campaigns WHERE code = ?').get(req.params.code);
+    if (!camp) return res.status(404).json({ error: 'غير موجود' });
+    const scans = db.prepare('SELECT * FROM qr_scans WHERE campaign_code = ? ORDER BY scanned_at DESC').all(req.params.code);
+    res.json({ ...camp, scans });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/qr-tool/scan', async (req, res) => {
+  try {
+    const { campaign_code, user_agent, browser, os, device, screen, language, platform, timezone, referrer } = req.body;
+    const ip = getClientIp(req);
+    let country = '', city = '';
+    try {
+      const geo = await fetch(`http://ip-api.com/json/${ip}?fields=country,city`);
+      if (geo.ok) { const g = await geo.json(); country = g.country || ''; city = g.city || ''; }
+    } catch {}
+    const camp = db.prepare('SELECT * FROM qr_campaigns WHERE code = ?').get(campaign_code);
+    db.prepare(`INSERT INTO qr_scans (campaign_code, ip, user_agent, browser, os, device, screen, language, platform, timezone, referrer, country, city, raw_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      campaign_code, ip, user_agent || '', browser || '', os || '', device || '', screen || '', language || '', platform || '', timezone || '', referrer || '', country, city, JSON.stringify(req.body)
+    );
+    const scanData = { campaign_code, ip, user_agent, browser, os, device, screen, language, platform, timezone, referrer, country, city };
+    sendToN8n(scanData);
+    res.json({ success: true, ip, country, city, redirect_url: camp?.redirect_url || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/qr-tool/scans', (req, res) => {
+  try {
+    const scans = db.prepare(`
+      SELECT s.*, c.name as campaign_name FROM qr_scans s
+      LEFT JOIN qr_campaigns c ON s.campaign_code = c.code
+      ORDER BY s.scanned_at DESC LIMIT 100
+    `).all();
+    res.json(scans);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/qr-tool/scan/:id', (req, res) => {
+  try {
+    const scan = db.prepare(`
+      SELECT s.*, c.name as campaign_name FROM qr_scans s
+      LEFT JOIN qr_campaigns c ON s.campaign_code = c.code
+      WHERE s.id = ?
+    `).get(req.params.id);
+    if (!scan) return res.status(404).json({ error: 'غير موجود' });
+    try { scan.raw_data = JSON.parse(scan.raw_data || '{}'); } catch {}
+    res.json(scan);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ===== Start =====
