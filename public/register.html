@@ -163,7 +163,7 @@ dr();
 
 let pendingPhone = '';
 
-function vP(){const v=document.getElementById('rP').value.trim(),s=document.getElementById('rPS'),h=document.getElementById('rPH');if(!v){s.textContent='';s.className='stat';h.textContent='';return}const ok=/^05\d{8}$/.test(v);s.textContent=ok?'✓':'✗';s.className='stat '+(ok?'ok':'bad');h.textContent=ok?'صحيح':'05xxxxxxxx';h.className='hint '+(ok?'ok':'bad')}
+function vP(){const v=document.getElementById('rP').value.trim(),s=document.getElementById('rPS'),h=document.getElementById('rPH');if(!v){s.textContent='';s.className='stat';h.textContent='';return}const ok=v.replace(/\D/g,'').length>=8;s.textContent=ok?'✓':'✗';s.className='stat '+(ok?'ok':'bad');h.textContent=ok?'صحيح':'رقم غير كامل';h.className='hint '+(ok?'ok':'bad')}
 
 function go(n){document.querySelectorAll('.stp').forEach(s=>s.classList.remove('on'));document.getElementById('s'+n).classList.add('on');document.querySelectorAll('.sp .d').forEach((d,i)=>d.classList.toggle('on',i<n))}
 
@@ -171,7 +171,7 @@ function msg(id,text,type){const el=document.getElementById(id);el.textContent=t
 
 async function sendCode(){
   const phone=document.getElementById('rP').value.trim(),b=document.getElementById('sBtn');
-  if(!/^05\d{8}$/.test(phone)){msg('er','رقم غير صحيح','b');return}
+  if(phone.replace(/\D/g,'').length<8){msg('er','رقم غير صحيح','b');return}
   b.disabled=true;b.textContent='جاري الإرسال...';
   try{
     const r=await(await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone})})).json();

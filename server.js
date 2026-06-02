@@ -227,7 +227,9 @@ app.post('/api/register', async (req, res) => {
     const openInst = list.find(i => i.instance?.status === 'open');
     if (openInst) {
       const instName = openInst.instance.instanceName;
-      const recipient = phone.startsWith('0') ? '213' + phone.slice(1) : phone;
+      const digits = phone.replace(/\D/g, '');
+      const clean = digits.replace(/^0+/, '');
+      const recipient = clean.startsWith('213') ? clean : '213' + clean;
       await fetch(`${EVO_URL}/message/sendText/${instName}`, {
         method: 'POST', headers: evoHeaders,
         body: JSON.stringify({ number: recipient, textMessage: { text: `🔐 رمز التوثيق الخاص بك:\n\n${code}\n\nأدخل هذا الرمز في التطبيق لإكمال التسجيل.` } })
