@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --sh: rgba(18,18,40,0.8);
+  --sg: rgba(18,18,40,0.3); --b: rgba(255,255,255,0.03); --bh: rgba(255,255,255,0.06);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff; --cg: rgba(0,229,255,0.08);
+  --em: #10b981; --tx: #f0f0ff; --t2: #8888aa; --t3: #444466; --da: #ff4466;
+  --r: 10px; --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+::selection { background:var(--pg); }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--pink); border-radius:2px; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); overflow-x:hidden; direction:rtl; }
+
+#bgC { position:fixed; inset:0; z-index:-2; }
+.g-noise { position:fixed; inset:0; z-index:-1; opacity:.008; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; }
+
+#ls { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:10; backdrop-filter:blur(4px); }
+#ls.h { display:none; }
+.lc { background:var(--s); backdrop-filter:blur(30px) saturate(1.3); border-radius:14px; border:1px solid var(--b); padding:40px 36px; width:380px; max-width:90vw; animation:fIn .5s ease; }
+@keyframes fIn { from{opacity:0;transform:translateY(30px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.lc .lo { text-align:center; margin-bottom:22px; }
+.lc .lo .ic { width:54px; height:54px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:16px; display:flex; align-items:center; justify-content:center; position:relative; }
+.lc .lo .ic::after { content:''; position:absolute; inset:-2px; border-radius:18px; background:linear-gradient(135deg,var(--pink),var(--cyan)); opacity:.15; }
+.lc .lo h1 { font-size:19px; font-weight:800; background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.lc .lo p { color:var(--t2); font-size:12px; margin-top:2px; }
+
+#hd { display:none; padding:18px 24px 0; max-width:1200px; margin:0 auto; }
+#hd.on { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+#hd .tt { font-size:17px; font-weight:700; }
+#hd .tt span { background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+#hd .sr { display:flex; align-items:center; gap:8px; color:var(--t2); font-size:12px; }
+#hd .sr .usr { background:var(--sg); border:1px solid var(--b); border-radius:6px; padding:2px 12px; }
+
+#db { display:none; padding:16px 24px 40px; max-width:1200px; margin:0 auto; }
+#db.on { display:block; animation:fIn .4s ease; }
+
+.st { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:16px; }
+.stc { background:var(--s); backdrop-filter:blur(20px); border:1px solid var(--b); border-radius:var(--r); padding:16px 18px; position:relative; overflow:hidden; cursor:default; transition:all .25s; }
+.stc:hover { border-color:var(--bh); transform:translateY(-2px); }
+.stc .gl { position:absolute; top:-40%; left:-20%; width:80%; height:80%; border-radius:50%; filter:blur(50px); opacity:.08; pointer-events:none; }
+.stc .n { font-size:26px; font-weight:900; letter-spacing:-.5px; display:flex; align-items:baseline; gap:2px; }
+.stc .l { color:var(--t2); font-size:11px; margin-top:2px; }
+
+.tb { display:flex; gap:4px; background:var(--sg); border-radius:8px; padding:3px; margin-bottom:14px; width:fit-content; }
+.tb button { padding:8px 20px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:var(--fn); background:transparent; color:var(--t2); transition:all .2s; }
+.tb button.on { background:var(--s); color:var(--tx); box-shadow:0 1px 8px rgba(0,0,0,.3); }
+.tb button:not(.on):hover { color:var(--tx); }
+
+.tbl-w { overflow-x:auto; border-radius:var(--r); border:1px solid var(--b); background:var(--s); backdrop-filter:blur(16px); }
+.tbl { width:100%; border-collapse:collapse; font-size:12px; min-width:500px; }
+.tbl th { text-align:right; padding:10px 14px; color:var(--t2); font-weight:600; font-size:11px; border-bottom:1px solid var(--b); background:var(--sg); white-space:nowrap; }
+.tbl td { padding:9px 14px; border-bottom:1px solid var(--b); color:var(--tx); }
+.tbl tr:last-child td { border:none; }
+.tbl tr:hover td { background:rgba(255,255,255,.01); }
+.tbl .ph { color:var(--t3); font-family:monospace; direction:ltr; display:inline-block; }
+.tbl .nm { font-weight:600; }
+
+.bdg { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:4px; font-size:10px; font-weight:600; }
+.bdg.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+.bdg.y { background:rgba(255,192,0,.04); color:#ffc000; border:1px solid rgba(255,192,0,.06); }
+.bdg.r { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.bdg.p { background:var(--pg); color:var(--pink); border:1px solid rgba(255,45,123,.08); }
+
+.ac { display:flex; gap:4px; }
+.ac button { background:transparent; border:none; color:var(--t2); cursor:pointer; padding:3px 6px; border-radius:4px; font-size:13px; transition:all .15s; }
+.ac button:hover { color:var(--cyan); background:var(--cg); }
+
+.tb-top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+.tb-top .srch { display:flex; gap:6px; flex:1; max-width:300px; }
+.tb-top .srch input { width:100%; padding:7px 12px; background:var(--sg); border:1px solid var(--b); border-radius:6px; color:var(--tx); font-size:12px; font-family:var(--fn); }
+.tb-top .srch input:focus { outline:none; border-color:var(--pink); box-shadow:0 0 12px var(--pg); }
+.tb-top .srch input::placeholder { color:var(--t3); }
+.tb-top .btg { display:flex; gap:6px; }
+.btn { padding:7px 16px; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; font-family:var(--fn); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-p { background:linear-gradient(135deg,var(--pink),#cc2060); color:white; }
+.btn-p:hover { transform:translateY(-1px); box-shadow:0 4px 18px var(--pg); }
+.btn-g { background:var(--sg); border:1px solid var(--b); color:var(--t2); }
+.btn-g:hover { background:var(--sh); color:var(--tx); }
+.btn-c { background:rgba(0,229,255,.04); color:var(--cyan); border:1px solid rgba(0,229,255,.06); }
+.btn-c:hover { background:rgba(0,229,255,.08); }
+.btn-d { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.btn-d:hover { background:rgba(255,68,102,.08); }
+.btn:disabled { opacity:.3; cursor:not-allowed; transform:none!important; }
+
+.modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(8px); background:rgba(6,6,14,.6); }
+.modal.on { display:flex; }
+.modal .mc { background:var(--s); backdrop-filter:blur(30px); border:1px solid var(--b); border-radius:14px; padding:32px; width:440px; max-width:90vw; animation:fIn .25s ease; max-height:90vh; overflow-y:auto; }
+.modal .mc h2 { font-size:16px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+.g { margin-bottom:13px; }
+.g label { display:block; color:var(--t2); font-size:11px; margin-bottom:3px; font-weight:600; }
+.inp { position:relative; }
+.inp input, .inp select { width:100%; padding:9px 12px; background:rgba(0,0,0,.25); border:1px solid var(--b); border-radius:6px; color:var(--tx); font-size:13px; transition:all .2s; font-family:var(--fn); }
+.inp input:focus, .inp select:focus { outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pg); }
+.inp input::placeholder { color:var(--t3); }
+.inp select option { background:#14142a; }
+.mg { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+
+#toasts { position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:999; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+.tst { background:var(--sh); backdrop-filter:blur(20px); border:1px solid var(--b); border-radius:8px; padding:10px 18px; font-size:12px; animation:tstIn .3s ease; pointer-events:auto; }
+.tst.ok::before { content:'✅ '; }
+.tst.bad { border-color:rgba(255,68,102,.06); }
+.tst.bad::before { content:'❌ '; }
+@keyframes tstIn { from{opacity:0;transform:translateY(-10px) scale(.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+.kb { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:50; color:var(--t3); font-size:9px; background:rgba(6,6,14,.7); padding:3px 12px; border-radius:6px; border:1px solid var(--b); backdrop-filter:blur(12px); display:flex; gap:10px; opacity:.35; }
+.kb kbd { display:inline-block; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.03); padding:0 5px; border-radius:3px; font-size:8px; font-family:inherit; }
+
+.emp { text-align:center; padding:30px; color:var(--t3); font-size:13px; }
+.load { display:flex; align-items:center; justify-content:center; padding:20px; }
+.sp { width:24px; height:24px; border:2px solid rgba(255,45,123,.06); border-top-color:var(--pink); border-radius:50%; animation:sp .6s linear infinite; }
+@keyframes sp { to{transform:rotate(360deg)} }
+
+@media(max-width:600px){ #hd,#db { padding:12px 14px 24px; } .lc { padding:28px 22px; } .modal .mc { padding:22px; } .kb { display:none; } .st { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<canvas id="bgC"></canvas>
+<div class="g-noise"></div>
+<div id="toasts"></div>
+<div class="kb"><span><kbd>Esc</kbd> إغلاق</span><span><kbd>Ctrl+K</kbd> بحث</span><span><kbd>Ctrl+R</kbd> تحديث</span></div>
+
+<div id="ls">
+  <div class="lc">
+    <div class="lo">
+      <div class="ic">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h1>Admin Panel</h1>
+      <p>Neon Control · v4.0</p>
+    </div>
+    <div id="le" style="padding:8px 12px;border-radius:6px;font-size:12px;text-align:center;display:none;margin-bottom:12px;background:rgba(255,68,102,.04);color:var(--da);border:1px solid rgba(255,68,102,.06);"></div>
+    <div class="g">
+      <label>كلمة المرور</label>
+      <div class="inp"><input type="password" id="lP" placeholder="••••••" autocomplete="off" onkeydown="if(event.key==='Enter')login()"></div>
+    </div>
+    <button class="btn btn-p" style="width:100%;padding:10px;font-size:13px;justify-content:center;margin-top:4px;" onclick="login()" id="lB">دخول</button>
+  </div>
+</div>
+
+<div id="hd">
+  <div class="tt"><span>◆</span> لوحة التحكم</div>
+  <div class="sr">
+    <span class="usr" id="hU">admin</span>
+    <span id="hT">00:00:00</span>
+    <button class="btn btn-g" onclick="if(confirm('تسجيل الخروج?')){localStorage.removeItem('admin_token');location.reload()}">خروج</button>
+  </div>
+</div>
+
+<div id="db">
+  <div class="st">
+    <div class="stc"><div class="gl" style="background:var(--pink)"></div><div class="n" id="stV">0</div><div class="l">إجمالي المتاجر</div></div>
+    <div class="stc"><div class="gl" style="background:var(--cyan)"></div><div class="n" id="stA">0</div><div class="l">نشط</div></div>
+    <div class="stc"><div class="gl" style="background:#ffc000"></div><div class="n" id="stP">0</div><div class="l">معلق</div></div>
+    <div class="stc"><div class="n" id="stO">0</div><div class="l">الطلبات</div></div>
+  </div>
+  <div class="tb">
+    <button class="on" data-tab="v" onclick="tab('v')">المتاجر</button>
+    <button data-tab="o" onclick="tab('o')">الطلبات</button>
+  </div>
+  <div id="tv" class="tv">
+    <div class="tb-top">
+      <div class="srch"><input type="text" id="vS" placeholder="بحث..." oninput="renderV()"></div>
+      <div class="btg">
+        <button class="btn btn-g" onclick="exportCSV()" title="CSV">📥 CSV</button>
+        <button class="btn btn-p" onclick="addV()">+ إضافة متجر</button>
+      </div>
+    </div>
+    <div class="tbl-w"><table class="tbl"><thead><tr><th>المتجر</th><th>الهاتف</th><th>الحالة</th><th>المنتجات</th><th style="width:60px;"></th></tr></thead><tbody id="vB"></tbody></table></div>
+  </div>
+  <div id="to" class="tv" style="display:none;">
+    <div class="tb-top">
+      <div class="srch"><input type="text" id="oS" placeholder="بحث..." oninput="renderO()"></div>
+      <div class="btg">
+        <button class="btn btn-g" onclick="exportCSVOrders()">📥 CSV</button>
+        <button class="btn btn-c" onclick="loadO()">🔄 تحديث</button>
+      </div>
+    </div>
+    <div class="tbl-w"><table class="tbl"><thead><tr><th>الطلب</th><th>المتجر</th><th>العميل</th><th>المبلغ</th><th>الحالة</th><th style="width:80px;"></th></tr></thead><tbody id="oB"></tbody></table></div>
+  </div>
+</div>
+
+<div class="modal" id="vM">
+  <div class="mc">
+    <h2 id="vMT">+ متجر جديد</h2>
+    <div class="g"><label>اسم المتجر</label><div class="inp"><input type="text" id="vN" placeholder="اسم المتجر"></div></div>
+    <div class="g"><label>الهاتف</label><div class="inp"><input type="tel" id="vPh" placeholder="05xxxxxxxx"></div></div>
+    <div class="g"><label>كلمة المرور</label><div class="inp"><input type="text" id="vPw" placeholder="••••••"></div></div>
+    <div class="g"><label>الحالة</label><div class="inp"><select id="vSt"><option value="active">نشط</option><option value="pending">معلق</option><option value="inactive">متوقف</option></select></div></div>
+    <div class="mg">
+      <button class="btn btn-g" onclick="document.getElementById('vM').classList.remove('on')">إلغاء</button>
+      <button class="btn btn-p" id="vSb" onclick="saveV()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="oM">
+  <div class="mc">
+    <h2>🔧 تغيير حالة الطلب</h2>
+    <div class="g"><label>الطلب</label><div style="font-size:13px;color:var(--t2);" id="oI">-</div></div>
+    <div class="g"><label>الحالة</label><div class="inp"><select id="oSt"><option value="pending">قيد الانتظار</option><option value="confirmed">مؤكد</option><option value="preparing">قيد التحضير</option><option value="ready">جاهز</option><option value="delivered">تم التوصيل</option><option value="cancelled">ملغي</option></select></div></div>
+    <div class="mg">
+      <button class="btn btn-g" onclick="document.getElementById('oM').classList.remove('on')">إلغاء</button>
+      <button class="btn btn-p" onclick="saveO()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const bc=document.getElementById('bgC'),bx=bc.getContext('2d');
+let bw,bh;
+const orbs=[];
+for(let i=0;i<5;i++){orbs.push({x:Math.random(),y:Math.random(),r:0.08+Math.random()*0.12,sx:(Math.random()-.5)*.002,sy:(Math.random()-.5)*.002,c:['#ff2d7b','#00e5ff','#7c3aed','#ff2d7b','#00e5ff'][i],a:0.04+Math.random()*0.04})}
+function rs(){bw=bc.width=innerWidth;bh=bc.height=innerHeight}
+rs();addEventListener('resize',rs);
+function dr(){bx.clearRect(0,0,bw,bh);orbs.forEach(o=>{o.x+=o.sx;o.y+=o.sy;if(o.x<-.1||o.x>1.1)o.sx*=-1;if(o.y<-.1||o.y>1.1)o.sy*=-1;const g=bx.createRadialGradient(o.x*bw,o.y*bh,0,o.x*bw,o.y*bh,o.r*bw);g.addColorStop(0,o.c+String(Math.round(o.a*255)).padStart(2,'0'));g.addColorStop(1,'transparent');bx.fillStyle=g;bx.fillRect(0,0,bw,bh)});requestAnimationFrame(dr)}
+dr();
+
+setInterval(()=>{const d=new Date();document.getElementById('hT').textContent=d.toLocaleTimeString('ar-SA')},1000);
+
+function toast(m,t='ok'){const e=document.createElement('div');e.className='tst '+t;e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(()=>e.remove(),3000)}
+
+const A='/api/admin';
+let V=[],O=[],eId=null,tk=localStorage.getItem('admin_token');
+
+async function login(){
+  const pw=document.getElementById('lP').value,b=document.getElementById('lB');
+  if(!pw)return;b.disabled=true;b.textContent='...';
+  try{
+    const r=await(await fetch(A+'/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})).json();
+    if(r.token){localStorage.setItem('admin_token',r.token);tk=r.token;document.getElementById('ls').classList.add('h');document.getElementById('hd').classList.add('on');document.getElementById('db').classList.add('on');init();toast('مرحباً','ok')}
+    else{document.getElementById('le').textContent='خطأ في البيانات';document.getElementById('le').style.display='block';setTimeout(()=>document.getElementById('le').style.display='none',3000)}
+  }catch(e){document.getElementById('le').textContent='فشل الاتصال';document.getElementById('le').style.display='block';setTimeout(()=>document.getElementById('le').style.display='none',3000)}
+  b.disabled=false;b.textContent='دخول';
+}
+
+if(tk){document.getElementById('ls').classList.add('h');document.getElementById('hd').classList.add('on');document.getElementById('db').classList.add('on');init()}
+
+async function init(){await Promise.all([loadV(),loadO()])}
+
+async function loadV(){
+  try{const r=await(await fetch(A+'/vendors',{headers:{'Authorization':'Bearer '+tk}})).json();V=Array.isArray(r)?r:(r.vendors||r.data||[]);renderV();stV()}catch(e){}
+}
+async function loadO(){
+  try{const r=await(await fetch(A+'/orders',{headers:{'Authorization':'Bearer '+tk}})).json();O=Array.isArray(r)?r:(r.orders||r.data||[]);renderO();stO()}catch(e){}
+}
+
+function stV(){const a=V.filter(v=>v.status==='active').length,p=V.filter(v=>v.status==='pending').length;animateN('stV',V.length);animateN('stA',a);animateN('stP',p)}
+function stO(){animateN('stO',O.length)}
+
+function animateN(id,t){const el=document.getElementById(id),c=parseInt(el.textContent)||0,d=t-c;if(d===0)return;const st=Date.now(),dr=600;function up(){const p=Math.min(1,(Date.now()-st)/dr);el.textContent=Math.round(c+d*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(up)}up()}
+
+function renderV(){
+  const q=document.getElementById('vS').value.trim().toLowerCase(),f=q?V.filter(v=>(v.name||'').toLowerCase().includes(q)||(v.phone||'').includes(q)):V,b=document.getElementById('vB');
+  if(!f.length){b.innerHTML='<tr><td colspan="5"><div class="emp">لا توجد متاجر</div></td></tr>';return}
+  b.innerHTML=f.map(v=>`<tr><td class="nm">${esc(v.name||'-')}</td><td class="ph" dir="ltr">${esc(v.phone||'-')}</td><td>${bdg(v.status||'pending')}</td><td>${v.products||v.product_count||0}</td><td><div class="ac"><button onclick="eV('${v.vendor_id}')" title="تعديل">✎</button><button onclick="dV('${v.vendor_id}')" title="حذف">✕</button></div></td></tr>`).join('');
+}
+
+function renderO(){
+  const q=document.getElementById('oS').value.trim().toLowerCase(),f=q?O.filter(o=>JSON.stringify(o).toLowerCase().includes(q)):O,b=document.getElementById('oB');
+  if(!f.length){b.innerHTML='<tr><td colspan="6"><div class="emp">لا توجد طلبات</div></td></tr>';return}
+  b.innerHTML=f.map(o=>`<tr><td style="color:var(--t2);font-family:monospace;font-size:10px;">${esc(String(o.id||o._id||'').slice(0,8))}</td><td>${esc(o.vendor_name||o.store||'-')}</td><td>${esc(o.customer_name||o.customer||o.name||'-')}</td><td>${o.total||o.amount||0} ر.س</td><td>${bdg(o.status||'pending')}</td><td><div class="ac"><button onclick="eO('${o.id}')" title="تغيير">⚙</button></div></td></tr>`).join('');
+}
+
+function bdg(s){const m={active:'g',pending:'y',inactive:'r',confirmed:'g',preparing:'p',ready:'c',delivered:'g',cancelled:'r'};const lm={active:'نشط',pending:'معلق',inactive:'متوقف',confirmed:'مؤكد',preparing:'قيد التحضير',ready:'جاهز',delivered:'تم التوصيل',cancelled:'ملغي'};return`<span class="bdg ${m[s]||'y'}">${lm[s]||s}</span>`}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function tab(t){document.querySelectorAll('.tb button').forEach(b=>b.classList.remove('on'));document.querySelector('.tb button[data-tab="'+t+'"]').classList.add('on');document.getElementById('tv').style.display=t==='v'?'block':'none';document.getElementById('to').style.display=t==='o'?'block':'none'}
+
+let vEditId=null;
+function addV(){vEditId=null;document.getElementById('vMT').textContent='+ متجر جديد';document.getElementById('vSb').textContent='حفظ';document.getElementById('vN').value='';document.getElementById('vPh').value='';document.getElementById('vPw').value='';document.getElementById('vSt').value='active';document.getElementById('vM').classList.add('on')}
+async function eV(id){const v=V.find(x=>String(x.vendor_id)===String(id));if(!v)return;vEditId=id;document.getElementById('vMT').textContent='✎ تعديل';document.getElementById('vSb').textContent='تحديث';document.getElementById('vN').value=v.name||'';document.getElementById('vPh').value=v.phone||'';document.getElementById('vPw').value='';document.getElementById('vSt').value=v.status||'pending';document.getElementById('vM').classList.add('on')}
+async function dV(id){if(!confirm('حذف المتجر؟'))return;try{await fetch(A+'/vendors/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+tk}});toast('تم الحذف','ok');loadV()}catch(e){toast('فشل الحذف','bad')}}
+
+async function saveV(){const n=document.getElementById('vN').value.trim(),p=document.getElementById('vPh').value.trim(),pw=document.getElementById('vPw').value,st=document.getElementById('vSt').value;if(!n)return toast('أدخل الاسم','bad');const body={name:n,phone:p,status:st};if(pw)body.password=pw;try{if(vEditId){await fetch(A+'/vendors/'+vEditId,{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(body)});toast('تم التحديث','ok')}else{await fetch(A+'/vendors',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(body)});toast('تمت الإضافة','ok')}document.getElementById('vM').classList.remove('on');loadV()}catch(e){toast('فشل الحفظ','bad')}}
+
+let oEditId=null;
+function eO(id){oEditId=id;document.getElementById('oI').textContent=id;const o=O.find(x=>String(x.id)===String(id));if(o)document.getElementById('oSt').value=o.status||'pending';document.getElementById('oM').classList.add('on')}
+async function saveO(){if(!oEditId)return;const st=document.getElementById('oSt').value;try{await fetch(A+'/orders/'+oEditId+'/status',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({status:st})});toast('تم التحديث','ok');document.getElementById('oM').classList.remove('on');loadO()}catch(e){toast('فشل التحديث','bad')}}
+
+function exportCSV(){if(!V.length)return toast('لا توجد بيانات','bad');const h='المتجر,الهاتف,الحالة\n',r=V.map(v=>`${v.name||'-'},${v.phone||'-'},${v.status||'-'}`).join('\n');dl('vendors.csv',h+r)}
+function exportCSVOrders(){if(!O.length)return toast('لا توجد بيانات','bad');const h='الطلب,المتجر,العميل,المبلغ,الحالة\n',r=O.map(o=>`${o.id||'-'},${o.vendor_name||o.store||'-'},${o.customer_name||o.customer||'-'},${o.total||o.amount||0},${o.status||'-'}`).join('\n');dl('orders.csv',h+r)}
+function dl(n,c){const b=new Blob(['\uFEFF'+c],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();toast('تم التصدير','ok')}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'))}if(e.ctrlKey&&e.key==='k'){e.preventDefault();const s=document.querySelector('.tv:not([style*="display:none"]) .srch input');if(s)s.focus()}if(e.ctrlKey&&e.key==='r'){e.preventDefault();loadV();loadO();toast('تم التحديث','ok')}});
+setInterval(()=>{if(tk){loadO()}},30000);
+document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on')})});
+</script>
+</body>
+</html>

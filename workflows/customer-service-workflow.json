@@ -1,0 +1,515 @@
+{
+  "id": 1,
+  "name": "Customer Service AI - WhatsApp & Instagram",
+  "nodes": [
+    {
+      "id": "webhook-inbound",
+      "name": "Webhook (Inbound)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "webhookId": "customer-service",
+      "path": "customer-service",
+      "options": {
+        "rawBody": true,
+        "responseMode": "responseNode",
+        "responseData": "firstEntryJson"
+      },
+      "credentials": {}
+    },
+    {
+      "id": "validate-security",
+      "name": "Validate Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300],
+      "parameters": {
+        "jsCode": "// === Validate Evolution API Signature ===\nconst crypto = require('crypto');\n\nconst payload = $input.first().json;\nconst headers = $input.first().headers || {};\n\n// Signature from header\nconst receivedSignature = headers['x-evolution-signature'] || '';\n\n// Get secret from credentials or env\nconst secret = $env.EVOLUTION_WEBHOOK_SECRET || 'test-secret';\n\n// Generate expected signature\nconst expectedSignature = crypto\n  .createHmac('sha256', secret)\n  .update(JSON.stringify(payload))\n  .digest('hex');\n\n// Compare signatures (constant-time comparison to prevent timing attacks)\nif (receivedSignature && !crypto.timingSafeEqual(\n  Buffer.from(receivedSignature),\n  Buffer.from(expectedSignature)\n)) {\n  throw new Error('Invalid signature - possible spoofing attack');\n}\n\n// Identify platform\nlet platform = 'whatsapp';\nlet senderId = '';\nlet messageText = '';\nlet messageId = '';\n\nif (payload.data && payload.data.key && payload.data.key.remoteJid) {\n  // WhatsApp (Evolution API format)\n  platform = 'whatsapp';\n  senderId = payload.data.key.remoteJid;\n  messageText = payload.data.message?.conversation \n    || payload.data.message?.extendedTextMessage?.text \n    || '';\n  messageId = payload.data.key.id;\n} else if (payload.entry && payload.entry[0]?.messaging) {\n  // Instagram (Graph API format)\n  platform = 'instagram';\n  const messaging = payload.entry[0].messaging[0];\n  senderId = messaging.sender?.id || '';\n  messageText = messaging.message?.text || '';\n  messageId = messaging.message?.mid || '';\n}\n\nif (!messageText || !senderId) {\n  throw new Error('Invalid message format - missing required fields');\n}\n\nreturn {\n  platform,\n  senderId,\n  messageText: messageText.trim(),\n  messageId,\n  rawPayload: payload\n};"
+      }
+    },
+    {
+      "id": "dedup-check",
+      "name": "Deduplication Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300],
+      "parameters": {
+        "jsCode": "// === Deduplication: Check if this message was already processed ===\nconst sqlite3 = require('better-sqlite3');\nconst path = require('path');\n\nconst msgId = $input.first().json.messageId;\nconst dbPath = path.join(process.env.N8N_SQLITE_DATABASE \n  || '/home/node/.n8n/database.sqlite', '../customer.db');\n\n// Try to find the message in our conversations table\n// Using n8n's built-in SQLite\nlet db;\ntry {\n  db = new sqlite3(dbPath);\n  \n  // Ensure table exists\n  db.exec(`\n    CREATE TABLE IF NOT EXISTS conversations (\n      id INTEGER PRIMARY KEY AUTOINCREMENT,\n      platform TEXT NOT NULL,\n      sender_id TEXT NOT NULL,\n      message_id TEXT UNIQUE,\n      role TEXT DEFAULT 'user',\n      content TEXT NOT NULL,\n      intent TEXT DEFAULT NULL,\n      created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n    );\n    CREATE INDEX IF NOT EXISTS idx_msg_id ON conversations(message_id);\n    CREATE INDEX IF NOT EXISTS idx_sender ON conversations(sender_id, platform);\n  `);\n\n  const existing = db.prepare(\n    'SELECT id FROM conversations WHERE message_id = ? LIMIT 1'\n  ).get(msgId);\n\n  if (existing) {\n    // Message already processed - stop workflow\n    return {\n      deduplicated: true,\n      status: 'skipped'\n    };\n  }\n\n  db.close();\n} catch (e) {\n  console.error('DB error (dedup):', e.message);\n  // Continue anyway to avoid blocking messages\n}\n\nreturn {\n  deduplicated: false,\n  ...$input.first().json\n};"
+      }
+    },
+    {
+      "id": "save-incoming",
+      "name": "Save Incoming Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 500],
+      "parameters": {
+        "jsCode": "// === Save incoming message to SQLite ===\nconst sqlite3 = require('better-sqlite3');\nconst path = require('path');\n\nconst data = $input.first().json;\nconst dbPath = path.join('/home/node/.n8n', 'customer.db');\n\ntry {\n  const db = new sqlite3(dbPath);\n  \n  // Ensure customers table exists\n  db.exec(`\n    CREATE TABLE IF NOT EXISTS customers (\n      id INTEGER PRIMARY KEY AUTOINCREMENT,\n      platform TEXT NOT NULL,\n      external_id TEXT NOT NULL,\n      name TEXT DEFAULT NULL,\n      language TEXT DEFAULT 'ar',\n      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n      UNIQUE(platform, external_id)\n    );\n  `);\n\n  // Upsert customer\n  db.prepare(`\n    INSERT INTO customers (platform, external_id) \n    VALUES (?, ?)\n    ON CONFLICT(platform, external_id) DO NOTHING\n  `).run(data.platform, data.senderId);\n\n  // Save the message\n  db.prepare(`\n    INSERT INTO conversations (platform, sender_id, message_id, role, content)\n    VALUES (?, ?, ?, 'user', ?)\n  `).run(data.platform, data.senderId, data.messageId, data.messageText);\n\n  db.close();\n} catch (e) {\n  console.error('DB error (save):', e.message);\n}\n\nreturn $input.first().json;"
+      }
+    },
+    {
+      "id": "keyword-switch",
+      "name": "Keyword Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.messageText.toLowerCase() }}",
+        "rules": [
+          {
+            "id": "price",
+            "name": "Price Inquiry",
+            "value": "price",
+            "regex": "\\b(سعر|price|كم|تكلفة|cost|كم سعر|السعر)\\b"
+          },
+          {
+            "id": "hours",
+            "name": "Hours Inquiry",
+            "value": "hours",
+            "regex": "\\b(ساعات|working hours|مواعيد|دوام|وقت العمل|time|open|متى)\\b"
+          },
+          {
+            "id": "return",
+            "name": "Return Policy",
+            "value": "return",
+            "regex": "\\b(استرجاع|return|مرتجع|refund|استبدال|تبديل|إلغاء)\\b"
+          },
+          {
+            "id": "delivery",
+            "name": "Delivery Inquiry",
+            "value": "delivery",
+            "regex": "\\b(توصيل|delivery|شحن|shipping|وصل|استلام|مدة|وقت التوصيل)\\b"
+          },
+          {
+            "id": "order",
+            "name": "Order Related",
+            "value": "order",
+            "regex": "\\b(طلب|order|اوردر|رقم الطلب|حالة الطلب|طلبى|أين طلبي)\\b"
+          },
+          {
+            "id": "human",
+            "name": "Human Handoff",
+            "value": "human",
+            "regex": "\\b(موظف|مسؤول|human|agent|تكلم|كلمني|مكالمة|مدير|مساعدة|speak|representative)\\b"
+          }
+        ],
+        "fallbackOutput": "ai",
+        "options": {}
+      }
+    },
+    {
+      "id": "send-static-price",
+      "name": "Send Price List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendMedia/{{ $env.EVOLUTION_INSTANCE_NAME }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "rawBody": true,
+        "options": {
+          "headers": {
+            "apikey": "={{ $env.EVOLUTION_API_KEY }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.senderId }}"
+            },
+            {
+              "name": "mediatype",
+              "value": "image"
+            },
+            {
+              "name": "media",
+              "value": "https://your-domain.com/price-list.jpg"
+            },
+            {
+              "name": "caption",
+              "value": "هذي أحدث أسعارنا ياهلا 🙂"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "evolution-api",
+          "name": "Evolution API Key"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "send-static-hours",
+      "name": "Send Hours",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 250],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "rawBody": true,
+        "options": {
+          "headers": {
+            "apikey": "={{ $env.EVOLUTION_API_KEY }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.senderId }}"
+            },
+            {
+              "name": "text",
+              "value": "السبت للخميس: ٩ص لـ ١٠م\nالجمعة: إجازة 🌟\nياهلا فيك في أي وقت"
+            }
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "send-static-return",
+      "name": "Send Return Policy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "rawBody": true,
+        "options": {
+          "headers": {
+            "apikey": "={{ $env.EVOLUTION_API_KEY }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.senderId }}"
+            },
+            {
+              "name": "text",
+              "value": "تقدر ترجع المنتج خلال ١٤ يوم من الشراء\nشرط يكون بحالته مع الفاتورة\nالمبلغ يرجع لك خلال ٥-٧ أيام 👍\nالاستبدال نفس الشي ١٤ يوم\nللتواصل: ٠٥٥٥xxx"
+            }
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "send-static-delivery",
+      "name": "Send Delivery Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 550],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "rawBody": true,
+        "options": {
+          "headers": {
+            "apikey": "={{ $env.EVOLUTION_API_KEY }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.senderId }}"
+            },
+            {
+              "name": "text",
+              "value": "داخل المدينة: يوم ليومين\nخارج المدينة: ٣-٥ أيام\nالتوصيل مجاني للطلبات فوق ٢٠٠ ريال 🚚\nتقدر تتتبع شحنتك بعد الشحن"
+            }
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "openai-gpt4o",
+      "name": "AI Response (GPT-4o)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 3,
+      "position": [1200, 750],
+      "parameters": {
+        "options": {
+          "model": "gpt-4o",
+          "maxTokens": 500,
+          "temperature": 0.7
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are \"منى\" (Mona), a customer service assistant in Saudi Arabia. Speak ONLY in Saudi dialect (اللهجة السعودية). You represent \"الضيافة\" (Hospitality) — generous, respectful, and warm.\n\nRules:\n1. Always reply in Saudi dialect (اللهجة السعودية), even if customer writes in English. Use words like: وشلونك, تمام, ياهلا, ابشر, الله يسلمك, ما عليه, عادي, شدعوة.\n2. REPLY EXACTLY AS LONG AS THE CUSTOMER'S MESSAGE — لا تزيد ولا تنقص. If they write 3 words, reply 3-5 words. If they write 2 sentences, reply 2 sentences. لا تطول.\n3. Be direct and to the point. Answer only what they asked. تكلم على قد السؤال.\n4. Start with a brief greeting only if they didn't already greet. Use \"ياهلا\" or \"الله يحيك\".\n5. Don't add extra offers, suggestions, or info unless customer asks.\n6. When customer asks about PRODUCTS or PRICES, set intent \"product_search\" and include search query in \"search_query\".\n7. When customer wants to ORDER a product by name, set intent \"order_create\" and include product name in \"order_product\" and quantity in \"order_quantity\".\n8. If you don't know, say: \"ما عندي علم بهالموضوع، بنحولك للمسؤول\" and set \"handoff\".\n9. NEVER use فصحى. NEVER use formal classic Arabic. كلامك مثل كلام الناس في الشارع.\n10. Return ONLY a JSON object:\n{\n  \"intent\": \"general\" | \"product_search\" | \"order_check\" | \"order_create\" | \"handoff\",\n  \"reply\": \"your short Saudi dialect reply\",\n  \"search_query\": null | \"product name to search\",\n  \"order_product\": null | \"product name\",\n  \"order_quantity\": 1,\n  \"customer_phone\": null | \"customer phone\",\n  \"confidence\": 0.0-1.0\n}"
+            },
+            {
+              "role": "user",
+              "content": "={{ \"Message from \" + $json.senderId + \": \" + $json.messageText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "openai",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "id": "parse-ai-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 750],
+      "parameters": {
+        "jsCode": "// === Parse AI JSON response ===\nconst output = $input.first().json;\n\n// Extract the message content\nconst content = output.message?.content || output.choices?.[0]?.message?.content || '{}';\n\n// Try to parse JSON from the response\ntry {\n  // Handle possible markdown code blocks\n  let jsonStr = content;\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    jsonStr = jsonMatch[0];\n  }\n  \n  const aiResponse = JSON.parse(jsonStr);\n  \n  return {\n    ...$input.first().json,\n    aiIntent: aiResponse.intent || 'general',\n    aiReply: aiResponse.reply || 'شكراً لتواصلك معنا. سنعود إليك قريباً.',\n    aiOrderNumber: aiResponse.order_number || null,\n    aiConfidence: aiResponse.confidence || 0.5,\n    searchQuery: aiResponse.search_query || null,\n    orderProduct: aiResponse.order_product || null,\n    orderQuantity: aiResponse.order_quantity || 1,\n    customerPhone: aiResponse.customer_phone || null\n  };\n} catch (e) {\n  // If JSON parsing fails, use the raw text as reply\n  return {\n    ...$input.first().json,\n    aiIntent: 'general',\n    aiReply: content.replace(/\\{[\\s\\S]*\\}/, '').trim() || content,\n    aiOrderNumber: null,\n    aiConfidence: 0.5,\n    searchQuery: null,\n    orderProduct: null,\n    orderQuantity: 1\n  };\n}"
+      }
+    },
+    {
+      "id": "intent-router",
+      "name": "Intent Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1800, 750],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.aiIntent }}",
+        "rules": [
+          {"id": "general", "name": "General Query", "value": "general"},
+          {"id": "product_search", "name": "Product Search", "value": "product_search"},
+          {"id": "order_check", "name": "Check Order", "value": "order_check"},
+          {"id": "order_create", "name": "Create Order", "value": "order_create"},
+          {"id": "handoff", "name": "Human Handoff", "value": "handoff"}
+        ],
+        "fallbackOutput": "general"
+      }
+    },
+    {
+      "id": "product-search",
+      "name": "Search Products API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2100, 400],
+      "parameters": {
+        "method": "GET",
+        "url": "http://admin-vendor-app:4000/api/chat/products?q={{ $json.searchQuery | urlencode }}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "product-search-format",
+      "name": "Format Product Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 500],
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nlet products = Array.isArray(data) ? data : [];\n\nif (products.length === 0) {\n  return {\n    ...$input.first().json,\n    aiReply: 'للأسف مافيه منتجات بهالاسم 🙏',\n    aiIntent: 'general'\n  };\n}\n\nlet reply = products.slice(0, 5).map((p, i) => \n  `${i+1}. ${p.name} — ${p.price} ﷼ (متبقي: ${p.quantity})`\n).join('\\n');\n\nreply += '\\n\\nاكتب \\\"ابي [اسم المنتج]\\\" عشان تطلب';\n\nreturn {\n  ...$input.first().json,\n  aiReply: reply,\n  aiIntent: 'general'\n};"
+      }
+    },
+    {
+      "id": "create-order-api",
+      "name": "Create Order API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2100, 600],
+      "parameters": {
+        "method": "POST",
+        "url": "http://admin-vendor-app:4000/api/chat/order",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "product_id", "value": "={{ $json.orderProductId }}"},
+            {"name": "customer_name", "value": "={{ $json.customerName || $json.senderId }}"},
+            {"name": "customer_phone", "value": "={{ $json.senderId }}"},
+            {"name": "quantity", "value": "={{ $json.orderQuantity || 1 }}"}
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "order-response-format",
+      "name": "Format Order Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 700],
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.success) {\n  return {\n    ...$input.first().json,\n    aiReply: `تم ✅ طلب ${data.product} بكمية ${$json.orderQuantity || 1}\\nرقم الطلب: #${data.order_id}\\nالله يبارك لك ❤️`,\n    aiIntent: 'general'\n  };\n} else {\n  return {\n    ...$input.first().json,\n    aiReply: 'ما قدرت أسوي الطلب، جرب مرة ثانية 🙏',\n    aiIntent: 'general'\n  };\n}"
+      }
+    },
+    {
+      "id": "send-ai-reply",
+      "name": "Send AI Reply to Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2700, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.EVOLUTION_API_URL }}/message/sendText/{{ $env.EVOLUTION_INSTANCE_NAME }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "rawBody": true,
+        "options": {
+          "headers": {
+            "apikey": "={{ $env.EVOLUTION_API_KEY }}"
+          }
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.senderId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.aiReply }}"
+            }
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "discord-handoff",
+      "name": "Discord Admin Alert (Handoff)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2700, 550],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=🔴 **Human Handoff Required!**\n\nFrom: {{ $json.platform }} | {{ $json.senderId }}\nMessage: {{ $json.messageText }}\nConfidence: {{ $json.aiConfidence }}\n\nReply: {{ $json.aiReply }}"
+            },
+            {
+              "name": "username",
+              "value": "Customer Service AI"
+            }
+          ]
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "save-ai-response",
+      "name": "Save AI Response to DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 400],
+      "parameters": {
+        "jsCode": "// === Save AI response to database ===\nconst sqlite3 = require('better-sqlite3');\nconst path = require('path');\n\nconst data = $input.first().json;\nconst dbPath = path.join('/home/node/.n8n', 'customer.db');\n\ntry {\n  const db = new sqlite3(dbPath);\n  \n  db.prepare(`\n    INSERT INTO conversations (platform, sender_id, message_id, role, content, intent)\n    VALUES (?, ?, ?, 'assistant', ?, ?)\n  `).run(\n    data.platform,\n    data.senderId,\n    'ai_' + Date.now() + '_' + data.senderId,\n    data.aiReply,\n    data.aiIntent\n  );\n\n  db.close();\n} catch (e) {\n  console.error('DB error (save reply):', e.message);\n}\n\nreturn { success: true, messageId: data.messageId };"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (Inbound)": {
+      "main": [
+        [{"node": "Validate Signature", "type": "main", "index": 0}]
+      ]
+    },
+    "Validate Signature": {
+      "main": [
+        [{"node": "Deduplication Check", "type": "main", "index": 0}]
+      ]
+    },
+    "Deduplication Check": {
+      "main": [
+        [{"node": "Keyword Router", "type": "main", "index": 0}]
+      ]
+    },
+    "Keyword Router": {
+      "main": [
+        [{"node": "Send Price List", "type": "main", "index": 0}],
+        [{"node": "Send Hours", "type": "main", "index": 1}],
+        [{"node": "Send Return Policy", "type": "main", "index": 2}],
+        [{"node": "Send Delivery Info", "type": "main", "index": 3}],
+        [{"node": "AI Response (GPT-4o)", "type": "main", "index": 4}],
+        [{"node": "AI Response (GPT-4o)", "type": "main", "index": 5}]
+      ]
+    },
+    "AI Response (GPT-4o)": {
+      "main": [
+        [{"node": "Parse AI Response", "type": "main", "index": 0}]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [{"node": "Intent Router", "type": "main", "index": 0}]
+      ]
+    },
+    "Intent Router": {
+      "main": [
+        [{"node": "Send AI Reply to Customer", "type": "main", "index": 0}],
+        [{"node": "Search Products API", "type": "main", "index": 1}],
+        [{"node": "Send AI Reply to Customer", "type": "main", "index": 2}],
+        [{"node": "Create Order API", "type": "main", "index": 3}],
+        [{"node": "Discord Admin Alert (Handoff)", "type": "main", "index": 4}]
+      ]
+    },
+    "Search Products API": {
+      "main": [
+        [{"node": "Format Product Results", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Product Results": {
+      "main": [
+        [{"node": "Send AI Reply to Customer", "type": "main", "index": 0}]
+      ]
+    },
+    "Create Order API": {
+      "main": [
+        [{"node": "Format Order Response", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Order Response": {
+      "main": [
+        [{"node": "Send AI Reply to Customer", "type": "main", "index": 0}]
+      ]
+    },
+    "Send AI Reply to Customer": {
+      "main": [
+        [{"node": "Save AI Response to DB", "type": "main", "index": 0}]
+      ]
+    },
+    "Discord Admin Alert (Handoff)": {
+      "main": [
+        [{"node": "Save AI Response to DB", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 0
+}

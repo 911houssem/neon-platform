@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR · Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --sh: rgba(18,18,40,0.8);
+  --sg: rgba(18,18,40,0.3); --b: rgba(255,255,255,0.03); --bh: rgba(255,255,255,0.06);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff; --cg: rgba(0,229,255,0.08);
+  --em: #10b981; --tx: #f0f0ff; --t2: #8888aa; --t3: #444466; --da: #ff4466;
+  --r: 10px; --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+::selection { background:var(--pg); }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--pink); border-radius:2px; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); overflow-x:hidden; direction:rtl; display:flex; align-items:center; justify-content:center; padding:20px; }
+
+#bgC { position:fixed; inset:0; z-index:-2; }
+.g-noise { position:fixed; inset:0; z-index:-1; opacity:.008; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; }
+
+@keyframes fIn { from{opacity:0;transform:translateY(30px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes sp { to{transform:rotate(360deg)} }
+@keyframes pl { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.box { background:var(--s); backdrop-filter:blur(30px) saturate(1.3); border-radius:14px; border:1px solid var(--b); padding:40px 36px; width:440px; max-width:100%; animation:fIn .5s ease; position:relative; z-index:1; }
+
+.lo { text-align:center; margin-bottom:22px; }
+.lo .ic { width:54px; height:54px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:16px; display:flex; align-items:center; justify-content:center; position:relative; }
+.lo .ic::after { content:''; position:absolute; inset:-2px; border-radius:18px; background:linear-gradient(135deg,var(--pink),var(--cyan)); opacity:.15; }
+.lo h1 { font-size:19px; font-weight:800; background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.lo p { color:var(--t2); font-size:12px; margin-top:2px; }
+
+.stp { display:none; }
+.stp.on { display:block; animation:fIn .35s ease; }
+
+.msg { padding:8px 12px; border-radius:6px; font-size:12px; text-align:center; display:none; margin-bottom:12px; }
+.msg.b { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.msg.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+
+.g { margin-bottom:13px; }
+.g label { display:block; color:var(--t2); font-size:11px; margin-bottom:3px; font-weight:600; }
+.inp { position:relative; }
+.inp input { width:100%; padding:9px 12px; background:rgba(0,0,0,.25); border:1px solid var(--b); border-radius:6px; color:var(--tx); font-size:13px; transition:all .2s; font-family:var(--fn); }
+.inp input:focus { outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pg); }
+.inp input::placeholder { color:var(--t3); }
+
+.phone { display:flex; direction:ltr; }
+.phone .pfx { background:rgba(0,0,0,.25); border:1px solid var(--b); border-left:none; border-radius:0 var(--r) var(--r) 0; padding:9px 12px; color:var(--pink); font-size:13px; font-weight:700; white-space:nowrap; display:flex; align-items:center; }
+.phone input { border-radius:var(--r) 0 0 var(--r); flex:1; }
+.phone input:focus { border-color:var(--pink); }
+
+.btn { padding:7px 16px; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; font-family:var(--fn); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-p { background:linear-gradient(135deg,var(--pink),#cc2060); color:white; }
+.btn-p:hover { transform:translateY(-1px); box-shadow:0 4px 18px var(--pg); }
+.btn-p:disabled { opacity:.4; cursor:not-allowed; transform:none!important; }
+.btn-g { background:var(--sg); border:1px solid var(--b); color:var(--t2); }
+.btn-g:hover { background:var(--sh); color:var(--tx); }
+.btn-d { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.btn-d:hover { background:rgba(255,68,102,.08); }
+.btn-w { width:100%; padding:10px; font-size:13px; justify-content:center; }
+.btn-group { display:flex; gap:8px; margin-top:14px; }
+.btn-group .btn { flex:1; }
+
+.hint { color:var(--t3); font-size:10px; margin-top:2px; }
+
+/* QR */
+.qr-box { background:rgba(0,0,0,.25); border-radius:10px; padding:24px; text-align:center; margin:12px 0; min-height:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--b); position:relative; overflow:hidden; }
+.qr-box .sc { position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--pink),transparent); animation:sc 2s ease-in-out infinite; pointer-events:none; }
+@keyframes sc { 0%{top:0} 100%{top:100%} }
+.qr-box img { max-width:200px; border-radius:4px; image-rendering:pixelated; position:relative; z-index:1; }
+.qr-box .h { color:var(--t2); font-size:12px; margin-top:10px; position:relative; z-index:1; }
+.load { display:none; flex-direction:column; align-items:center; gap:10px; }
+.load.on { display:flex; }
+.sp { width:28px; height:28px; border:2px solid rgba(255,45,123,.06); border-top-color:var(--pink); border-radius:50%; animation:sp .6s linear infinite; }
+
+/* TIMER */
+.timer { display:none; align-items:center; gap:6px; color:var(--t3); font-size:10px; margin-top:6px; justify-content:center; }
+.timer.on { display:flex; }
+.timer .d { width:4px; height:4px; border-radius:50%; background:var(--pink); animation:pl 1s infinite; }
+
+/* STATUS */
+.sb { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:6px; font-size:11px; font-weight:600; }
+.sb.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+.sb.y { background:rgba(255,192,0,.04); color:#ffc000; border:1px solid rgba(255,192,0,.06); }
+.sb.r { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.sb .dot { width:5px; height:5px; border-radius:50%; }
+.sb.g .dot { background:var(--em); box-shadow:0 0 8px var(--em); }
+.sb.y .dot { background:#ffc000; animation:pl 1s infinite; }
+.sb.r .dot { background:var(--da); }
+
+.info { background:rgba(0,0,0,.15); border-radius:var(--r); padding:12px 14px; margin:10px 0; border:1px solid var(--b); }
+.info p { color:var(--t2); font-size:11px; margin:3px 0; display:flex; justify-content:space-between; }
+.info span { color:var(--tx); font-family:monospace; font-size:10px; }
+.info .v { color:var(--em); }
+
+.suc { text-align:center; margin:12px 0; }
+.suc .big { width:56px; height:56px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:fIn .5s ease; }
+.suc h2 { background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:18px; font-weight:800; }
+.suc p { color:var(--t2); font-size:12px; margin-top:4px; }
+
+.kb { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:50; color:var(--t3); font-size:9px; background:rgba(6,6,14,.7); padding:3px 12px; border-radius:6px; border:1px solid var(--b); backdrop-filter:blur(12px); display:flex; gap:10px; opacity:.35; }
+.kb kbd { display:inline-block; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.03); padding:0 5px; border-radius:3px; font-size:8px; font-family:inherit; }
+
+footer { text-align:center; margin-top:18px; color:var(--t3); font-size:10px; }
+footer a { color:var(--cyan); text-decoration:none; }
+
+@media(max-width:480px){ .box { padding:28px 20px; } .kb { display:none; } }
+</style>
+</head>
+<body>
+
+<canvas id="bgC"></canvas>
+<div class="g-noise"></div>
+<div class="kb"><span><kbd>Esc</kbd> إعادة</span><span><kbd>Enter</kbd> إنشاء</span></div>
+
+<div class="box">
+  <div class="lo">
+    <div class="ic">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 9.59 12 7"/><polyline points="16.5 4.21 16.5 14.41 12 17"/></svg>
+    </div>
+    <h1>ربط واتساب</h1>
+    <p>اربط رقمك لاستقبال الرسائل</p>
+  </div>
+
+  <div id="er" class="msg b"></div>
+  <div id="ok" class="msg g"></div>
+
+  <!-- Step 1 -->
+  <div id="s1" class="stp on">
+    <div class="g">
+      <label>📱 رقم الهاتف</label>
+      <div class="phone">
+        <div class="pfx">+</div>
+        <input type="tel" id="phone" placeholder="9665xxxxxxxx" value="966" dir="ltr" onkeydown="if(event.key==='Enter')connect()">
+      </div>
+      <p class="hint">مثال: 966501234987</p>
+    </div>
+    <div class="g">
+      <label>🏪 اسم المتجر</label>
+      <div class="inp"><input type="text" id="store" placeholder="مثلاً: متجر الضيافة" value="متجري" onkeydown="if(event.key==='Enter')connect()"></div>
+    </div>
+    <button class="btn btn-p btn-w" id="cBtn" onclick="connect()">🔗 إنشاء QR</button>
+  </div>
+
+  <!-- Step 2 -->
+  <div id="s2" class="stp">
+    <p style="text-align:center;font-weight:600;font-size:13px;margin-bottom:4px;">📲 امسح QR بالواتساب</p>
+    <p style="text-align:center;color:var(--t3);font-size:11px;margin-bottom:10px;">واتساب ← الثلاث نقاط ← الأجهزة المرتبطة ← ربط جهاز</p>
+    <div class="qr-box">
+      <div class="sc"></div>
+      <div class="load on" id="qrL">
+        <div class="sp"></div>
+        <p style="color:var(--t2);font-size:12px;">جاري إنشاء QR...</p>
+      </div>
+      <img id="qrI" src="" alt="QR" style="display:none;">
+      <p class="h" id="qrH" style="display:none;">⏳ يرجى المسح خلال دقيقتين</p>
+      <div class="timer" id="timer"><span class="d"></span><span id="tT">00:00</span></div>
+    </div>
+    <div class="info">
+      <p><span>المتجر</span> <span id="iS">-</span></p>
+      <p><span>الغرفة</span> <span id="iI">-</span></p>
+      <p><span>الحالة</span> <span id="iSt" style="color:#ffc000;">جارٍ الاتصال...</span></p>
+    </div>
+    <div id="sB" style="text-align:center;"></div>
+    <div class="btn-group">
+      <button class="btn btn-d" onclick="disconnect()">قطع</button>
+      <button class="btn btn-g" onclick="reset()">رجوع</button>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div id="s3" class="stp">
+    <div class="suc">
+      <div class="big">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M20 6L9 17l-5-5" stroke="#ff2d7b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>✅ تم الربط!</h2>
+      <p>الواتساب جاهز لاستقبال الرسائل</p>
+    </div>
+    <div class="info">
+      <p><span>الحالة</span> <span class="v">✅ متصل</span></p>
+      <p><span>مدة الاتصال</span> <span class="v" id="fT">-</span></p>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-d" onclick="disconnect()">قطع</button>
+      <button class="btn btn-p" onclick="reset()">ربط آخر</button>
+    </div>
+  </div>
+
+  <footer>Customer Service AI · <a href="http://localhost:5678">n8n</a></footer>
+</div>
+
+<script>
+// === CANVAS ===
+const bc=document.getElementById('bgC'),bx=bc.getContext('2d');
+let bw,bh;
+const orbs=[];
+for(let i=0;i<4;i++){orbs.push({x:Math.random(),y:Math.random(),r:0.08+Math.random()*0.12,sx:(Math.random()-.5)*.002,sy:(Math.random()-.5)*.002,c:['#ff2d7b','#00e5ff','#7c3aed','#10b981'][i],a:0.03+Math.random()*0.04})}
+function rs(){bw=bc.width=innerWidth;bh=bc.height=innerHeight}
+rs();addEventListener('resize',rs);
+function dr(){bx.clearRect(0,0,bw,bh);orbs.forEach(o=>{o.x+=o.sx;o.y+=o.sy;if(o.x<-.1||o.x>1.1)o.sx*=-1;if(o.y<-.1||o.y>1.1)o.sy*=-1;const g=bx.createRadialGradient(o.x*bw,o.y*bh,0,o.x*bw,o.y*bh,o.r*bw);g.addColorStop(0,o.c+String(Math.round(o.a*255)).padStart(2,'0'));g.addColorStop(1,'transparent');bx.fillStyle=g;bx.fillRect(0,0,bw,bh)});requestAnimationFrame(dr)}
+dr();
+
+// === STATE ===
+let inst=null,iv=null,tiv=null,st=null;
+
+function err(m){const e=document.getElementById('er');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',5000)}
+function ok(m){const s=document.getElementById('ok');s.textContent=m;s.style.display='block';setTimeout(()=>s.style.display='none',4000)}
+function go(n){document.querySelectorAll('.stp').forEach(s=>s.classList.remove('on'));document.getElementById('s'+n).classList.add('on')}
+
+function startTimer(){
+  document.getElementById('timer').classList.add('on');
+  st=Date.now();if(tiv)clearInterval(tiv);
+  tiv=setInterval(()=>{const sec=Math.floor((Date.now()-st)/1000);document.getElementById('tT').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')},1000);
+}
+
+async function connect(){
+  const p=document.getElementById('phone').value.trim(),s=document.getElementById('store').value.trim()||'متجري',btn=document.getElementById('cBtn');
+  if(!p||p.length<8)return err('رقم غير صحيح');
+  const nm='s_'+s.replace(/[^a-zA-Z0-9]/g,'_')+'_'+Date.now();
+  go(2);document.getElementById('qrL').classList.add('on');btn.disabled=true;
+  try{
+    const r=await(await fetch('/api/instance/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instanceName:nm,number:p})})).json();btn.disabled=false;
+    if(!r.ok&&r.error){err(r.error);go(1);return}
+    inst=nm;document.getElementById('iS').textContent=s;document.getElementById('iI').textContent=nm;startTimer();
+    const qr=r.qrcode?.base64||r.qr||r.qrcode?.code;
+    if(qr){document.getElementById('qrL').classList.remove('on');document.getElementById('qrI').src=qr;document.getElementById('qrI').style.display='block';document.getElementById('qrH').style.display='block'}
+    else{for(let i=0;i<15;i++){try{const q=await(await fetch('/api/instance/qrcode/'+nm)).json(),b=q.base64||q.qrcode?.base64||q.qrcode;if(b){document.getElementById('qrL').classList.remove('on');document.getElementById('qrI').src=b;document.getElementById('qrI').style.display='block';document.getElementById('qrH').style.display='block';break}}catch(e){}if(i===14){document.getElementById('qrL').classList.remove('on');err('QR غير متاح');go(1);return}await new Promise(r=>setTimeout(r,2000))}}
+    poll(nm);
+    try{const wh=await(await fetch('/api/instance/webhook/'+nm,{method:'POST',headers:{'Content-Type':'application/json'}})).json()}catch(e){}
+  }catch(e){btn.disabled=false;err(e.message);go(1)}
+}
+
+function poll(n){
+  if(iv)clearInterval(iv);
+  iv=setInterval(async()=>{
+    try{const r=await(await fetch('/api/instance/state/'+n)).json(),st=(r.state||r.connectionState||'').toLowerCase(),b=document.getElementById('sB');
+    if(st==='open'||st==='connected'){clearInterval(iv);if(tiv)clearInterval(tiv);document.getElementById('fT').textContent=document.getElementById('tT').textContent;b.innerHTML='<div class="sb g"><span class="dot"></span> ✅ متصل</div>';document.getElementById('iSt').innerHTML='<span style="color:var(--em)">✅ متصل</span>';setTimeout(()=>go(3),1200)}
+    else if(st==='connecting'||st==='pending'||st==='init'){b.innerHTML='<div class="sb y"><span class="dot"></span> ⏳ انتظار المسح...</div>';document.getElementById('iSt').textContent='في انتظار المسح'}
+    else if(st){b.innerHTML='<div class="sb r"><span class="dot"></span> غير متصل</div>';document.getElementById('iSt').textContent='غير متصل'}
+    }catch(e){}
+  },2000);
+}
+
+async function disconnect(){
+  if(!inst)return;if(iv)clearInterval(iv);if(tiv)clearInterval(tiv);
+  try{await fetch('/api/instance/logout/'+inst,{method:'POST'});ok('تم القطع')}catch(e){}
+  reset();
+}
+function reset(){
+  if(iv)clearInterval(iv);if(tiv)clearInterval(tiv);inst=null;st=null;
+  document.getElementById('phone').value='966';document.getElementById('qrI').src='';document.getElementById('qrI').style.display='none';document.getElementById('qrH').style.display='none';document.getElementById('qrL').classList.remove('on');document.getElementById('sB').innerHTML='';document.getElementById('cBtn').disabled=false;document.getElementById('timer').classList.remove('on');document.getElementById('tT').textContent='00:00';go(1);
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')reset()});
+</script>
+</body>
+</html>

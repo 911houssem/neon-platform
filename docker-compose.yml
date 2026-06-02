@@ -1,0 +1,107 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb-evolution
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: evolution
+    networks:
+      - customer-service-net
+
+  evolution-api:
+    image: atendai/evolution-api:v1.8.2
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+    environment:
+      SERVER_URL: http://localhost:8080
+      LOG_LEVEL: info
+      LOG_COLOR: "true"
+      DATABASE_ENABLED: "true"
+      DATABASE_CONNECTION_URI: mongodb://mongodb:27017/evolution
+      AUTHENTICATION_API_KEY: "123456"
+      WEBHOOK_ENABLED: "true"
+      WEBHOOK_DELAY: 2000
+      DEL_INSTANCE: "false"
+    volumes:
+      - evolution_store:/evolution/store
+    networks:
+      - customer-service-net
+
+  qr-connector:
+    image: node:20-alpine
+    container_name: qr-connector
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - evolution-api
+    environment:
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: "123456"
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/customer-service
+    working_dir: /app
+    command: sh -c "npm install && node server.js"
+    volumes:
+      - ./qr-connector:/app
+    networks:
+      - customer-service-net
+
+  admin-vendor-app:
+    image: node:20-alpine
+    container_name: admin-vendor-app
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+    working_dir: /app
+    command: sh -c "npm install && node server.js"
+    volumes:
+      - ./admin-vendor-app:/app
+    networks:
+      - customer-service-net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-customer-service
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    depends_on:
+      - evolution-api
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - WEBHOOK_URL=http://localhost:5678
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_METRICS=false
+      - N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
+      - N8N_AI_ENABLED=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./data:/data
+      - ./workflows:/home/node/.n8n/workflows
+    networks:
+      - customer-service-net
+
+volumes:
+  mongodb_data:
+  evolution_store:
+  n8n_data:
+
+networks:
+  customer-service-net:
+    driver: bridge

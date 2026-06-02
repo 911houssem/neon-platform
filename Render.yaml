@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: neon-platform
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ADMIN_PASSWORD
+        value: 10032008
+      - key: EVOLUTION_API_URL
+        value: http://evolution-api:8080
+      - key: EVOLUTION_API_KEY
+        value: 123456
+      - key: N8N_WEBHOOK_URL
+        value: http://n8n:5678/webhook/customer-service

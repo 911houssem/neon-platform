@@ -1,0 +1,9 @@
+{
+    "name": "qr-connector",
+    "version": "1.0.0",
+    "description": "WhatsApp QR code pairing interface for Evolution API",
+    "main": "server.js",
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+}

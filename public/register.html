@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل · Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06060e; --s: rgba(18,18,40,0.5); --sh: rgba(18,18,40,0.8);
+  --sg: rgba(18,18,40,0.3); --b: rgba(255,255,255,0.03); --bh: rgba(255,255,255,0.06);
+  --pink: #ff2d7b; --pg: rgba(255,45,123,0.12); --cyan: #00e5ff; --cg: rgba(0,229,255,0.08);
+  --em: #10b981; --tx: #f0f0ff; --t2: #8888aa; --t3: #444466; --da: #ff4466;
+  --r: 10px; --fn: 'Noto Sans Arabic',sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+::selection { background:var(--pg); }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--pink); border-radius:2px; }
+body { font-family:var(--fn); background:var(--bg); min-height:100vh; color:var(--tx); overflow-x:hidden; direction:rtl; display:flex; align-items:center; justify-content:center; }
+
+#bgC { position:fixed; inset:0; z-index:-2; }
+.g-noise { position:fixed; inset:0; z-index:-1; opacity:.008; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size:256px; pointer-events:none; }
+
+@keyframes fIn { from{opacity:0;transform:translateY(30px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes sp { to{transform:rotate(360deg)} }
+
+.box { background:var(--s); backdrop-filter:blur(30px) saturate(1.3); border-radius:14px; border:1px solid var(--b); padding:40px 36px; width:400px; max-width:90vw; animation:fIn .5s ease; position:relative; z-index:1; }
+
+.lo { text-align:center; margin-bottom:22px; }
+.lo .ic { width:54px; height:54px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:16px; display:flex; align-items:center; justify-content:center; position:relative; }
+.lo .ic::after { content:''; position:absolute; inset:-2px; border-radius:18px; background:linear-gradient(135deg,var(--pink),var(--cyan)); opacity:.15; }
+.lo h1 { font-size:19px; font-weight:800; background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.lo p { color:var(--t2); font-size:12px; margin-top:2px; }
+
+.stp { display:none; }
+.stp.on { display:block; animation:fIn .35s ease; }
+
+.sp { display:flex; gap:6px; justify-content:center; margin-bottom:22px; }
+.sp .d { width:32px; height:3px; border-radius:2px; background:var(--t3); transition:all .3s; }
+.sp .d.on { background:var(--pink); box-shadow:0 0 8px var(--pg); }
+
+.msg { padding:8px 12px; border-radius:6px; font-size:12px; text-align:center; display:none; margin-bottom:12px; }
+.msg.b { background:rgba(255,68,102,.04); color:var(--da); border:1px solid rgba(255,68,102,.06); }
+.msg.g { background:rgba(16,185,129,.04); color:var(--em); border:1px solid rgba(16,185,129,.06); }
+
+.g { margin-bottom:13px; }
+.g label { display:block; color:var(--t2); font-size:11px; margin-bottom:3px; font-weight:600; }
+.inp { position:relative; }
+.inp input { width:100%; padding:9px 12px; background:rgba(0,0,0,.25); border:1px solid var(--b); border-radius:6px; color:var(--tx); font-size:13px; transition:all .2s; font-family:var(--fn); }
+.inp input:focus { outline:none; border-color:var(--pink); box-shadow:0 0 0 3px var(--pg); }
+.inp input::placeholder { color:var(--t3); }
+.inp .stat { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:13px; pointer-events:none; }
+.inp .stat.ok { color:var(--em); } .inp .stat.bad { color:var(--da); }
+
+.hint { color:var(--t3); font-size:10px; margin-top:2px; }
+.hint.bad { color:var(--da); } .hint.ok { color:var(--em); }
+
+.btn { padding:7px 16px; border:none; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; font-family:var(--fn); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-p { background:linear-gradient(135deg,var(--pink),#cc2060); color:white; }
+.btn-p:hover { transform:translateY(-1px); box-shadow:0 4px 18px var(--pg); }
+.btn-p:disabled { opacity:.4; cursor:not-allowed; transform:none!important; }
+.btn-g { background:var(--sg); border:1px solid var(--b); color:var(--t2); }
+.btn-g:hover { background:var(--sh); color:var(--tx); }
+.btn-w { width:100%; padding:10px; font-size:13px; justify-content:center; margin-top:4px; }
+
+.code { display:flex; gap:8px; }
+.code input { text-align:center; letter-spacing:4px; font-family:monospace; direction:ltr; }
+
+.suc { text-align:center; padding:12px 0; }
+.suc .big { width:56px; height:56px; margin:0 auto 12px; background:linear-gradient(135deg,var(--pg),var(--cg)); border-radius:50%; display:flex; align-items:center; justify-content:center; animation:fIn .5s ease; }
+.suc h2 { background:linear-gradient(135deg,var(--pink),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:18px; font-weight:800; }
+.suc p { color:var(--t2); font-size:12px; margin-top:4px; }
+
+footer { text-align:center; margin-top:20px; color:var(--t3); font-size:10px; }
+footer a { color:var(--cyan); text-decoration:none; }
+
+@media(max-width:480px){ .box { padding:28px 20px; } }
+</style>
+</head>
+<body>
+
+<canvas id="bgC"></canvas>
+<div class="g-noise"></div>
+
+<div class="box">
+  <div class="lo">
+    <div class="ic">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+    </div>
+    <h1>تسجيل متجر جديد</h1>
+    <p>Neon Register · v4.0</p>
+  </div>
+
+  <div class="sp">
+    <div class="d on"></div>
+    <div class="d"></div>
+    <div class="d"></div>
+  </div>
+
+  <div id="er" class="msg b"></div>
+  <div id="ok" class="msg g"></div>
+
+  <div id="s1" class="stp on">
+    <div class="g">
+      <label>اسم المتجر</label>
+      <div class="inp">
+        <input type="text" id="rN" placeholder="مثلاً: متجر الضيافة" oninput="vN()" onblur="vN()" onkeydown="if(event.key==='Enter')next(1)">
+        <span class="stat" id="rNS"></span>
+      </div>
+      <p class="hint" id="rNH"></p>
+    </div>
+    <div class="g">
+      <label>📱 رقم الهاتف</label>
+      <div class="inp">
+        <input type="tel" id="rP" placeholder="05xxxxxxxx" dir="ltr" oninput="vP()" onblur="vP()" onkeydown="if(event.key==='Enter')next(1)">
+        <span class="stat" id="rPS"></span>
+      </div>
+      <p class="hint" id="rPH"></p>
+    </div>
+    <div class="g">
+      <label>🔑 كلمة المرور</label>
+      <div class="inp">
+        <input type="password" id="rPw" placeholder="أكثر من 6 أحرف" oninput="vPw()" onblur="vPw()" onkeydown="if(event.key==='Enter')next(1)">
+        <span class="stat" id="rPwS"></span>
+      </div>
+      <p class="hint" id="rPwH"></p>
+    </div>
+    <button class="btn btn-p btn-w" onclick="next(1)" id="n1">التالي</button>
+  </div>
+
+  <div id="s2" class="stp">
+    <p style="text-align:center;color:var(--t2);font-size:12px;margin-bottom:14px;">📋 تأكيد البيانات وإرسال طلب التسجيل</p>
+    <div class="g"><label>المتجر</label><div style="font-size:13px;color:var(--tx);" id="cN">-</div></div>
+    <div class="g"><label>الهاتف</label><div style="font-size:13px;direction:ltr;text-align:right;color:var(--tx);font-family:monospace;" id="cP">-</div></div>
+    <button class="btn btn-p btn-w" onclick="submit()" id="sBtn">🚀 إرسال الطلب</button>
+    <button class="btn btn-g btn-w" onclick="prev(2)" style="margin-top:6px;">← رجوع</button>
+  </div>
+
+  <div id="s3" class="stp">
+    <p style="text-align:center;color:var(--t2);font-size:12px;margin-bottom:12px;">🔐 أدخل رمز التفعيل</p>
+    <div class="g">
+      <label>رمز التفعيل</label>
+      <div class="code">
+        <div class="inp" style="flex:1;"><input type="text" id="vCode" placeholder="0000" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length>=4)verify()" onkeydown="if(event.key==='Enter')verify()"></div>
+      </div>
+    </div>
+    <button class="btn btn-p btn-w" onclick="verify()" id="vBtn">🔓 تفعيل</button>
+    <button class="btn btn-g btn-w" onclick="prev(3)" style="margin-top:6px;">← رجوع</button>
+  </div>
+
+  <div id="s4" class="stp">
+    <div class="suc">
+      <div class="big">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M20 6L9 17l-5-5" stroke="#ff2d7b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>✅ تم التسجيل!</h2>
+      <p>مرحباً بك في المنصة</p>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn btn-p btn-w" onclick="window.location.href='vendor.html'">🔑 دخول المتجر</button>
+    </div>
+  </div>
+
+  <footer>Customer Service AI · <a href="http://localhost:5678">n8n</a></footer>
+</div>
+
+<script>
+const bc=document.getElementById('bgC'),bx=bc.getContext('2d');
+let bw,bh;
+const orbs=[];
+for(let i=0;i<4;i++){orbs.push({x:Math.random(),y:Math.random(),r:0.08+Math.random()*0.12,sx:(Math.random()-.5)*.002,sy:(Math.random()-.5)*.002,c:['#ff2d7b','#00e5ff','#7c3aed','#10b981'][i],a:0.03+Math.random()*0.04})}
+function rs(){bw=bc.width=innerWidth;bh=bc.height=innerHeight}
+rs();addEventListener('resize',rs);
+function dr(){bx.clearRect(0,0,bw,bh);orbs.forEach(o=>{o.x+=o.sx;o.y+=o.sy;if(o.x<-.1||o.x>1.1)o.sx*=-1;if(o.y<-.1||o.y>1.1)o.sy*=-1;const g=bx.createRadialGradient(o.x*bw,o.y*bh,0,o.x*bw,o.y*bh,o.r*bw);g.addColorStop(0,o.c+String(Math.round(o.a*255)).padStart(2,'0'));g.addColorStop(1,'transparent');bx.fillStyle=g;bx.fillRect(0,0,bw,bh)});requestAnimationFrame(dr)}
+dr();
+
+let pendingData={};
+
+function vN(){const v=document.getElementById('rN').value.trim(),s=document.getElementById('rNS'),h=document.getElementById('rNH');if(!v){s.textContent='';s.className='stat';h.textContent='';return}const ok=v.length>=2;s.textContent=ok?'✓':'✗';s.className='stat '+(ok?'ok':'bad');h.textContent=ok?'جيد':'قصير جداً';h.className='hint '+(ok?'ok':'bad')}
+function vP(){const v=document.getElementById('rP').value.trim(),s=document.getElementById('rPS'),h=document.getElementById('rPH');if(!v){s.textContent='';s.className='stat';h.textContent='';return}const ok=/^05\d{8}$/.test(v);s.textContent=ok?'✓':'✗';s.className='stat '+(ok?'ok':'bad');h.textContent=ok?'صحيح':'05xxxxxxxx';h.className='hint '+(ok?'ok':'bad')}
+function vPw(){const v=document.getElementById('rPw').value,s=document.getElementById('rPwS'),h=document.getElementById('rPwH');if(!v){s.textContent='';s.className='stat';h.textContent='';return}const ok=v.length>=6;s.textContent=ok?'✓':'✗';s.className='stat '+(ok?'ok':'bad');h.textContent=ok?'قوية ✓':'ضعيفة';h.className='hint '+(ok?'ok':'bad')}
+
+function go(n){document.querySelectorAll('.stp').forEach(s=>s.classList.remove('on'));document.getElementById('s'+n).classList.add('on');document.querySelectorAll('.sp .d').forEach((d,i)=>d.classList.toggle('on',i<n))}
+
+function next(n){
+  if(n===1){const ok=document.getElementById('rN').value.trim().length>=2&&/^05\d{8}$/.test(document.getElementById('rP').value.trim())&&document.getElementById('rPw').value.length>=6;if(!ok){document.getElementById('er').textContent='تأكد من صحة البيانات';document.getElementById('er').style.display='block';setTimeout(()=>document.getElementById('er').style.display='none',3000);return}document.getElementById('er').style.display='none';document.getElementById('cN').textContent=document.getElementById('rN').value.trim();document.getElementById('cP').textContent=document.getElementById('rP').value.trim()}
+  go(n+1);
+}
+function prev(n){go(n-1)}
+
+async function submit(){
+  const name=document.getElementById('rN').value.trim(),phone=document.getElementById('rP').value.trim(),password=document.getElementById('rPw').value,b=document.getElementById('sBtn');
+  b.disabled=true;b.textContent='...';pendingData={name,phone,password};
+  try{
+    const r=await(await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,password})})).json();
+    if(r.success){go(3);document.getElementById('ok').textContent='تم إرسال الرمز';document.getElementById('ok').style.display='block';setTimeout(()=>document.getElementById('ok').style.display='none',4000);console.log('DEBUG code:',r.debug_code)}
+    else{document.getElementById('er').textContent=r.error||'فشل';document.getElementById('er').style.display='block';setTimeout(()=>document.getElementById('er').style.display='none',4000)}
+  }catch(e){document.getElementById('er').textContent='خطأ';document.getElementById('er').style.display='block';setTimeout(()=>document.getElementById('er').style.display='none',4000)}
+  b.disabled=false;b.textContent='🚀 إرسال الطلب';
+}
+
+async function verify(){
+  const code=document.getElementById('vCode').value.trim(),b=document.getElementById('vBtn');
+  if(code.length<4)return;b.disabled=true;b.textContent='...';
+  try{
+    const r=await(await fetch('/api/register/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,phone:pendingData.phone})})).json();
+    if(r.verified){const c=await(await fetch('/api/register/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pendingData)})).json();if(c.success)go(4);else{document.getElementById('er').textContent='فشل الإكمال';document.getElementById('er').style.display='block'}}
+    else{document.getElementById('er').textContent='رمز غير صحيح';document.getElementById('er').style.display='block';setTimeout(()=>document.getElementById('er').style.display='none',3000)}
+  }catch(e){document.getElementById('er').textContent='خطأ';document.getElementById('er').style.display='block';setTimeout(()=>document.getElementById('er').style.display='none',3000)}
+  b.disabled=false;b.textContent='🔓 تفعيل';
+}
+</script>
+</body>
+</html>
